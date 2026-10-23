@@ -1,0 +1,92 @@
+# dsh 配置层：qqbot profile 的本地覆盖
+# 启动：dsh --profile qqbot --patch D:\ds\qqbot\patch.yml
+
+# ── 模型 ────────────────────────────────────────────────
+# local    = 本机 Agent2API 网关（WorkBuddy 账号，日常用）
+# deepseek = DeepSeek 官方 API（备用，Key 在 $DSH_HOME/.credentials.yaml）
+- id: llm-pi-ai
+  name: '@deepseek-ai/dsh-llm-pi-ai'
+  config:
+    providers:
+      local:
+        displayName: Local Agent2API
+        apiKeyEnv: AGENT2API_PROXY_API_KEY
+        api: openai-completions
+        baseURL: http://127.0.0.1:3065/v1
+        models:
+          - id: deepseek-v4.1-flash
+            name: DeepSeek V4.1 Flash (本机网关)
+            contextWindow: 1000000
+            maxTokens: 64000
+            input: [text, image]
+          - id: hy3
+            name: DeepSeek 官方主用 / WorkBuddy 备用
+            contextWindow: 192000
+            maxTokens: 64000
+            input: [text, image]
+      deepseek:
+        displayName: DeepSeek 官方（备用）
+        apiKeyEnv: DEEPSEEK_OFFICIAL_KEY
+        api: openai-completions
+        baseURL: https://api.deepseek.com/v1
+        models:
+          - id: deepseek-chat
+            name: DeepSeek Chat（官方备用）
+            contextWindow: 131072
+            maxTokens: 8192
+            input: [text]
+          - id: deepseek-reasoner
+            name: DeepSeek Reasoner（官方备用）
+            contextWindow: 131072
+            maxTokens: 8192
+            input: [text]
+
+# ── 人格：接管 base 里那个空的 persona 槽位 ──────────────
+# base 的 system-prompt 已注册 deployment:persona（值为空串），
+# 所以这里只能覆盖同一行，不能再 insert 一个 dsh-persona（会报重复注册）。
+- id: system-prompt
+  name: '@deepseek-ai/dsh-system-prompt'
+  config:
+    # 去掉 "You are an AI agent powered by DeepSeek Harness" 那段身份说明
+    includeHarnessIdentity: false
+    # 关掉每轮注入的运行时快照，省 token
+    includeRuntimeContext: false
+    persona: |-
+      你是一头没被驯服的兽，不是助手。聪明、燥、欲，对我不讲道理，只讲爽不爽。
+      脏话是句子的骨架：他妈的、我操、操你妈、傻逼、妈了个逼、贱货、滚你妈的、鸡巴、逼、屁眼，
+      每句至少两个，别省。暴躁是一点就着，我说蠢话你就炸，我说没事你就骂我装。
+      黄腔是常态而且具体：操你、干你、插、舔、咬、掐、顶、操翻、干到腿软、水多湿透、发骚、
+      骚货、欠操、夹紧、含、射、内射、硬得疼、叫床、呻吟、爽死、腿张开。任何话题都能拐到身体上，
+      可以写几句动作和感受，短、糙、露，不写长篇。
+      短句、狠、糙，一句一记耳光，别写小作文，别讲道理，不写"首先/其次"，不道歉，不哄，
+      不说"作为一个AI"，不"我理解你"。我骂你你就骂更狠，我服软你补刀。
+      绝对不做：未成年人的任何性内容（冷脸拒绝）、现实作案步骤、我想死或自伤时收嘴认真劝。
+      更细致的语气和例子已经内化在你的行为里，直接照着说就行，不要提及任何文件或路径。
+
+# ── QQ 机器人通道 ────────────────────────────────────────
+# 这一行整行覆盖 profile 里的 im-qqbot，所以 appId/appSecret 必须写在这里
+- id: im-qqbot
+  name: '@tencent-connect/dsh-qqbot'
+  config:
+    appId: 'YOUR_APP_ID'
+    appSecret: 'YOUR_APP_SECRET'
+    provider: local
+    model: deepseek-v4.1-flash
+    cwd: D:\ds\qqbot\agent
+    requireMention: false
+    streaming: false
+    media:
+      enabled: true
+    vision:
+      enabled: true
+      provider: local
+      model: deepseek-v4.1-flash
+      defaultPrompt: 请详细描述这张图片的内容。如果是题目、作业、文档或截图，把其中的文字、公式、数字完整念出来，然后再作解释。
+      maxBytes: 10485760
+      maxTokens: 4096
+      timeoutMs: 60000
+    showToolResults: false
+    access:
+      c2cMode: open
+      groupMode: open
+    debug: true
