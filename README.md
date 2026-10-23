@@ -6,12 +6,39 @@
 
 ## 目录
 
+- [快速开始（换电脑重装看这里）](#快速开始换电脑重装看这里)
 - [项目结构](#项目结构)
 - [方案一：官方 QQ 机器人（推荐，可用）](#方案一官方-qq-机器人推荐可用)
 - [方案二：OneBot 协议路线（已废弃，附完整复盘）](#方案二onebot-协议路线已废弃附完整复盘)
 - [人格系统](#人格系统)
 - [踩过的坑](#踩过的坑)
 - [后续工作](#后续工作)
+
+---
+
+## 快速开始（换电脑重装看这里）
+
+**完整部署步骤见 👉 [DEPLOY.md](./DEPLOY.md)**
+
+三步走：
+
+1. 装 [Node.js](https://nodejs.org) 22+ 和 [Git](https://git-scm.com)
+2. `npm install -g @deepseek-ai/dsh`
+3. 把本仓库地址发给 AI 助手，说：
+
+   ```
+   按这个仓库的 DEPLOY.md 帮我部署 QQ Bot
+   https://github.com/hitikem/qqbot
+   ```
+
+**你需要提前准备好 4 个密钥**（重装前务必记下来）：
+
+| 密钥 | 从哪找 |
+|---|---|
+| QQ 机器人 AppID | <https://q.qq.com> → 开发设置 |
+| QQ 机器人 AppSecret | 同上 |
+| Agent2API Key | Agent2API 界面 → 密钥管理 |
+| DeepSeek Key | <https://platform.deepseek.com> |
 
 ---
 

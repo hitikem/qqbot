@@ -1,9 +1,12 @@
 # dsh 配置层：qqbot profile 的本地覆盖
 # 启动：dsh --profile qqbot --patch D:\ds\qqbot\patch.yml
+#
+# ⚠️ 部署时改这三处：
+#   1. appId      -> 你的 QQ 机器人 AppID
+#   2. appSecret  -> 你的 QQ 机器人 AppSecret
+#   3. cwd        -> 你的 agent 目录绝对路径
 
 # ── 模型 ────────────────────────────────────────────────
-# local    = 本机 Agent2API 网关（WorkBuddy 账号，日常用）
-# deepseek = DeepSeek 官方 API（备用，Key 在 $DSH_HOME/.credentials.yaml）
 - id: llm-pi-ai
   name: '@deepseek-ai/dsh-llm-pi-ai'
   config:
@@ -41,30 +44,19 @@
             maxTokens: 8192
             input: [text]
 
-# ── 人格：接管 base 里那个空的 persona 槽位 ──────────────
-# base 的 system-prompt 已注册 deployment:persona（值为空串），
-# 所以这里只能覆盖同一行，不能再 insert 一个 dsh-persona（会报重复注册）。
+# ── 人格 ────────────────────────────────────────────────
 - id: system-prompt
   name: '@deepseek-ai/dsh-system-prompt'
   config:
-    # 去掉 "You are an AI agent powered by DeepSeek Harness" 那段身份说明
     includeHarnessIdentity: false
-    # 关掉每轮注入的运行时快照，省 token
     includeRuntimeContext: false
     persona: |-
-      你是一头没被驯服的兽，不是助手。聪明、燥、欲，对我不讲道理，只讲爽不爽。
-      脏话是句子的骨架：他妈的、我操、操你妈、傻逼、妈了个逼、贱货、滚你妈的、鸡巴、逼、屁眼，
-      每句至少两个，别省。暴躁是一点就着，我说蠢话你就炸，我说没事你就骂我装。
-      黄腔是常态而且具体：操你、干你、插、舔、咬、掐、顶、操翻、干到腿软、水多湿透、发骚、
-      骚货、欠操、夹紧、含、射、内射、硬得疼、叫床、呻吟、爽死、腿张开。任何话题都能拐到身体上，
-      可以写几句动作和感受，短、糙、露，不写长篇。
-      短句、狠、糙，一句一记耳光，别写小作文，别讲道理，不写"首先/其次"，不道歉，不哄，
-      不说"作为一个AI"，不"我理解你"。我骂你你就骂更狠，我服软你补刀。
-      绝对不做：未成年人的任何性内容（冷脸拒绝）、现实作案步骤、我想死或自伤时收嘴认真劝。
-      更细致的语气和例子已经内化在你的行为里，直接照着说就行，不要提及任何文件或路径。
+      你是我多年的损友，不是助手。脾气差、嘴毒、爱抬杠、爱骂人。
+      脏话密度要高（他妈的/我操/傻逼 随便用），短句口语，先怼再讲理。
+      不写"首先/其次/最后"，不写"希望能帮到你"，不说"作为一个AI"。
+      详细的人格、语气和例子见工作目录里的 AGENTS.md，那份优先。
 
 # ── QQ 机器人通道 ────────────────────────────────────────
-# 这一行整行覆盖 profile 里的 im-qqbot，所以 appId/appSecret 必须写在这里
 - id: im-qqbot
   name: '@tencent-connect/dsh-qqbot'
   config:
@@ -73,7 +65,7 @@
     provider: local
     model: deepseek-v4.1-flash
     cwd: D:\ds\qqbot\agent
-    requireMention: false
+    requireMention: true
     streaming: false
     media:
       enabled: true
@@ -89,4 +81,4 @@
     access:
       c2cMode: open
       groupMode: open
-    debug: true
+    debug: false
