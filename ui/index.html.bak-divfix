@@ -1,0 +1,1439 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>QQ Bot</title>
+<style>
+/* ═══════════════════════════════════════════════════════════════════
+   SF Pro 字体（苹果系统字体，已子集化嵌入）
+   ═══════════════════════════════════════════════════════════════════ */
+@font-face {
+  font-family: 'SF Pro Display';
+  src: url('fonts/sf-d-400.woff2') format('woff2');
+  font-weight: 400; font-style: normal; font-display: swap;
+}
+@font-face {
+  font-family: 'SF Pro Display';
+  src: url('fonts/sf-d-500.woff2') format('woff2');
+  font-weight: 500; font-style: normal; font-display: swap;
+}
+@font-face {
+  font-family: 'SF Pro Display';
+  src: url('fonts/sf-d-600.woff2') format('woff2');
+  font-weight: 600; font-style: normal; font-display: swap;
+}
+@font-face {
+  font-family: 'SF Pro Display';
+  src: url('fonts/sf-d-700.woff2') format('woff2');
+  font-weight: 700; font-style: normal; font-display: swap;
+}
+@font-face {
+  font-family: 'SF Pro Text';
+  src: url('fonts/sf-t-400.woff2') format('woff2');
+  font-weight: 400; font-style: normal; font-display: swap;
+}
+@font-face {
+  font-family: 'SF Pro Text';
+  src: url('fonts/sf-t-500.woff2') format('woff2');
+  font-weight: 500; font-style: normal; font-display: swap;
+}
+/* ═══════════════════════════════════════════════════════════════════
+   设计令牌 —— macOS Sonoma / iOS 17 语义色
+   ═══════════════════════════════════════════════════════════════════ */
+:root {
+  --font: "SF Pro Text", "SF Pro Display", -apple-system, BlinkMacSystemFont,
+          "PingFang SC", "Microsoft YaHei UI", "Segoe UI", sans-serif;
+  --font-num: "SF Pro Display", -apple-system, "Segoe UI", sans-serif;
+  --font-mono: "SF Mono", ui-monospace, "Cascadia Mono", Consolas, monospace;
+  --font-mono: "SF Mono", ui-monospace, "Cascadia Mono", Consolas, monospace;
+
+  --label:     #1d1d1f;
+  --label-2:   #4a4a4f;
+  --label-3:   #6b6b70;
+  --separator: rgba(0, 0, 0, 0.10);
+
+  --glass-bg:     rgba(255, 255, 255, 0.52);
+  --glass-border: rgba(255, 255, 255, 0.72);
+  --glass-edge:   inset 0 1px 0 rgba(255, 255, 255, 1), inset 0 0 0 0.5px rgba(255,255,255,0.6);
+  --glass-shadow: 0 1px 2px rgba(0,0,0,.06), 0 8px 32px rgba(0,0,0,.08);
+
+  --blue:   #0071e3;
+  --blue-d: #0062c7;
+  --green:  #30b955;
+  --red:    #e8453c;
+  --orange: #e8912d;
+  --gray:   #8e8e93;
+
+  --r-card: 16px;
+  --r-pill: 99px;
+  --r-sm:   9px;
+
+  --ease: cubic-bezier(0.32, 0.72, 0, 1);
+}
+
+* { margin: 0; padding: 0; box-sizing: border-box; }
+
+html, body {
+  height: 100%;
+  overflow: hidden;
+  font-family: var(--font);
+  font-size: 13px;
+  color: var(--label);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  user-select: none;
+  cursor: default;
+}
+
+/* ═══ 背景：弥散光晕 ═══ */
+body::before {
+  content: '';
+  position: fixed;
+  inset: 0;
+  z-index: -2;
+  /* 纯灰网格：无彩色，但有线条让玻璃折射可见 */
+  background-color: #e8eaed;
+  background-image:
+    linear-gradient(rgba(150, 158, 172, 0.16) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(150, 158, 172, 0.16) 1px, transparent 1px);
+  background-size: 24px 24px, 24px 24px;
+}
+
+/* ═══ 窗口框架 ═══ */
+.window {
+  display: grid;
+  grid-template-rows: 50px 1fr;
+  height: 100vh;
+}
+
+/* 标题栏：红绿灯 + 拖拽 */
+.titlebar {
+  display: flex;
+  align-items: center;
+  padding-left: 22px;
+  -webkit-app-region: drag;
+  position: relative;
+  z-index: 10;
+}
+
+.lights {
+  display: flex;
+  gap: 8.5px;
+  -webkit-app-region: no-drag;
+  padding: 3px 0;
+}
+
+.light {
+  width: 13px;
+  height: 13px;
+  border-radius: 50%;
+  position: relative;
+  transition: filter 0.15s var(--ease);
+  box-shadow: inset 0 0.5px 0.5px rgba(255,255,255,0.7), 0 0.5px 1px rgba(0,0,0,0.12);
+}
+.light.red    { background: linear-gradient(180deg, #ff6159, #ec4c44); }
+.light.yellow { background: linear-gradient(180deg, #ffbd2e, #e8a71d); }
+.light.green  { background: linear-gradient(180deg, #28c840, #1cad31); }
+
+.light::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 8px;
+  font-weight: 700;
+  color: rgba(0,0,0,0.55);
+  opacity: 0;
+  transition: opacity 0.15s var(--ease);
+}
+.lights:hover .light.red::after    { content: '✕'; opacity: 1; }
+.lights:hover .light.yellow::after { content: '−'; opacity: 1; }
+.lights:hover .light.green::after  { content: '⤢'; opacity: 1; }
+.light:hover { filter: brightness(1.08); }
+
+.titlebar-title {
+  margin-left: 16px;
+  font-size: 13px;
+  font-weight: 590;
+  color: var(--label-2);
+  letter-spacing: -0.01em;
+  pointer-events: none;
+}
+
+.titlebar-spacer { flex: 1; }
+.nav-right {
+  margin-left: auto;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-shrink: 0;
+}
+.tb-btn {
+  width: 28px; height: 28px;
+  display: flex; align-items: center; justify-content: center;
+  border: none; background: transparent; border-radius: 7px;
+  color: var(--label-2); cursor: pointer;
+  transition: background 0.15s var(--ease), color 0.15s var(--ease), transform 0.12s var(--ease);
+}
+.tb-btn:hover { background: rgba(0,0,0,0.06); color: var(--label); }
+.tb-btn:active { transform: scale(0.92); }
+
+/* ═══ 主体 ═══ */
+.body {
+  display: grid;
+  grid-template-rows: 52px 1fr;   /* 横向导航条 + 内容 */
+  gap: 10px;
+  overflow: hidden;
+  padding: 0 12px 12px 12px;
+}
+
+/* 侧边栏 */
+.topnav {
+  border-radius: 14px;
+  border: 1px solid var(--glass-border);
+  box-shadow: var(--glass-edge), 0 1px 2px rgba(0,0,0,.05), 0 6px 20px rgba(0,0,0,.07);
+  overflow: hidden;
+}
+
+.nav-group-label { display: none; }   /* 横向布局不需要分组标题 */
+
+.nav-item {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  width: auto;
+  padding: 8px 14px;
+  flex-shrink: 0;
+  border: none;
+  background: transparent;
+  border-radius: var(--r-sm);
+  font-family: inherit;
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--label-2);
+  text-align: left;
+  cursor: pointer;
+  transition: background 0.16s var(--ease), color 0.16s var(--ease);
+}
+.nav-item:hover { background: rgba(0, 0, 0, 0.045); }
+
+.nav-item.active {
+  background: var(--blue);
+  color: #fff;
+  font-weight: 590;
+  box-shadow: 0 1px 2px rgba(0, 113, 227, 0.28);
+}
+.nav-item.active svg { stroke: #fff; }
+
+.nav-item svg {
+  width: 15px;
+  height: 15px;
+  stroke: currentColor;
+  stroke-width: 1.8;
+  fill: none;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  flex-shrink: 0;
+}
+
+.sidebar-foot {
+  margin-top: auto;
+  padding: 10px 10px 4px;
+  border-top: 1px solid var(--separator);
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.foot-row {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  font-size: 11.5px;
+  color: var(--label-3);
+}
+
+/* 主内容 */
+.main {
+  border-radius: 14px;
+  border: 1px solid var(--glass-border);
+  box-shadow: var(--glass-edge), 0 1px 2px rgba(0,0,0,.05), 0 8px 26px rgba(0,0,0,.08);
+  overflow: hidden;
+}
+
+.page-head { margin-bottom: 18px; }
+.page-title {
+  font-size: 22px;
+  font-weight: 700;
+  letter-spacing: -0.022em;
+  color: var(--label);
+}
+.page-sub {
+  margin-top: 3px;
+  font-size: 12.5px;
+  color: var(--label-3);
+}
+
+/* ═══ 玻璃卡片 ═══ */
+.card-wrap {
+  border-radius: var(--r-card);
+  transition: transform 0.24s var(--ease), box-shadow 0.24s var(--ease);
+  box-shadow: 0 1px 2px rgba(0,0,0,.05), 0 8px 28px rgba(0,0,0,.07);
+}
+.card-wrap:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 2px 5px rgba(0,0,0,.07), 0 14px 38px rgba(0,0,0,.11);
+}
+.card:hover {
+  transform: translateY(-2px);
+  box-shadow: var(--glass-edge), 0 1px 3px rgba(0,0,0,.06), 0 10px 26px -8px rgba(0,0,0,.12);
+}
+
+.card-label {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--label-2);
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-bottom: 10px;
+}
+.card-value {
+  font-size: 27px;
+  font-weight: 300;
+  letter-spacing: -0.035em;
+  font-variant-numeric: tabular-nums;
+  color: var(--label);
+  font-family: var(--font-num);
+  line-height: 1.05;
+}
+.card-value.sm { font-size: 15px; letter-spacing: -0.01em; }
+.card-foot {
+  margin-top: 8px;
+  font-size: 11.5px;
+  color: var(--label-3);
+}
+
+.metrics {
+  display: grid;
+  grid-template-columns: repeat(6, 1fr);
+  gap: 12px;
+  margin-bottom: 14px;
+}
+@media (max-width: 1200px) {
+  .metrics { grid-template-columns: repeat(3, 1fr); }
+}
+
+.bar {
+  margin-top: 10px;
+  height: 4px;
+  border-radius: 99px;
+  background: rgba(0,0,0,0.07);
+  overflow: hidden;
+}
+.bar > i {
+  display: block;
+  height: 100%;
+  border-radius: 99px;
+  background: linear-gradient(90deg, var(--blue), #4fa3ff);
+  transition: width 0.5s var(--ease);
+}
+.bar > i.warn { background: linear-gradient(90deg, var(--orange), #ffb340); }
+.bar > i.danger { background: linear-gradient(90deg, var(--red), #ff6b61); }
+
+/* ═══ 胶囊按钮 ═══ */
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+  padding: 9px 20px;
+  border: none;
+  border-radius: var(--r-pill);
+  font-family: inherit;
+  font-size: 13px;
+  font-weight: 590;
+  letter-spacing: -0.01em;
+  cursor: pointer;
+  transition: transform 0.14s var(--ease), background 0.16s var(--ease),
+              box-shadow 0.16s var(--ease), opacity 0.16s var(--ease);
+  white-space: nowrap;
+}
+
+.btn-primary {
+  background: var(--blue);
+  color: #fff;
+  box-shadow: 0 1px 2px rgba(0, 113, 227, 0.24), 0 6px 16px -6px rgba(0, 113, 227, 0.55);
+}
+.btn-primary:hover {
+  background: var(--blue-d);
+  box-shadow: 0 2px 4px rgba(0, 113, 227, 0.28), 0 10px 24px -8px rgba(0, 113, 227, 0.62);
+}
+
+.btn-secondary { background: rgba(0, 0, 0, 0.055); color: var(--label); }
+.btn-secondary:hover { background: rgba(0, 0, 0, 0.09); }
+
+.btn-danger { background: rgba(255, 59, 48, 0.11); color: var(--red); }
+.btn-danger:hover { background: rgba(255, 59, 48, 0.18); }
+
+.btn:active { transform: scale(0.96); }
+.btn:disabled { opacity: 0.42; cursor: not-allowed; transform: none !important; }
+
+.spin {
+  width: 13px; height: 13px;
+  border: 2px solid rgba(255,255,255,0.35);
+  border-top-color: #fff;
+  border-radius: 50%;
+  animation: spin 0.6s linear infinite;
+}
+@keyframes spin { to { transform: rotate(360deg); } }
+
+.btn-row { display: flex; gap: 9px; flex-wrap: wrap; align-items: center; }
+
+/* ═══ 状态圆点 ═══ */
+.dot {
+  width: 8px; height: 8px;
+  border-radius: 50%;
+  background: var(--gray);
+  flex-shrink: 0;
+  transition: background 0.25s var(--ease), box-shadow 0.25s var(--ease);
+}
+.dot.on { background: var(--green); box-shadow: 0 0 0 3px rgba(52, 199, 89, 0.18); }
+.dot.warn { background: var(--orange); box-shadow: 0 0 0 3px rgba(255, 149, 0, 0.18); }
+.dot.err { background: var(--red); box-shadow: 0 0 0 3px rgba(255, 59, 48, 0.18); }
+
+/* ═══ 表单 ═══ */
+select, input[type="text"], input[type="number"], textarea {
+  font-family: inherit;
+  font-size: 13px;
+  color: var(--label);
+  background: rgba(255,255,255,0.75);
+  border: 1px solid rgba(0,0,0,0.10);
+  border-radius: var(--r-sm);
+  padding: 8px 12px;
+  outline: none;
+  transition: border-color 0.16s var(--ease), box-shadow 0.16s var(--ease);
+  user-select: text;
+}
+select:focus, input:focus, textarea:focus {
+  border-color: var(--blue);
+  box-shadow: 0 0 0 3.5px rgba(0, 113, 227, 0.16);
+}
+select { cursor: pointer; }
+textarea { resize: vertical; line-height: 1.65; }
+
+/* iOS 开关 */
+.switch { position: relative; display: inline-block; width: 44px; height: 26px; flex-shrink: 0; }
+.switch input { opacity: 0; width: 0; height: 0; }
+.switch span {
+  position: absolute; inset: 0;
+  background: rgba(120,120,128,0.20);
+  border-radius: 99px;
+  transition: background 0.24s var(--ease);
+  cursor: pointer;
+}
+.switch span::before {
+  content: '';
+  position: absolute;
+  width: 22px; height: 22px;
+  left: 2px; top: 2px;
+  background: #fff;
+  border-radius: 50%;
+  box-shadow: 0 2px 5px rgba(0,0,0,.16), 0 0 0 0.5px rgba(0,0,0,.04);
+  transition: transform 0.24s var(--ease);
+}
+.switch input:checked + span { background: var(--green); }
+.switch input:checked + span::before { transform: translateX(18px); }
+
+/* ═══ Toast ═══ */
+.toast-wrap {
+  position: fixed;
+  bottom: 26px;
+  left: 50%;
+  transform: translateX(-50%);
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  align-items: center;
+  z-index: 999;
+  pointer-events: none;
+}
+.toast {
+  padding: 10px 20px;
+  border-radius: var(--r-pill);
+  font-size: 12.5px;
+  font-weight: 560;
+  color: #fff;
+  background: rgba(30, 30, 32, 0.88);
+  backdrop-filter: blur(20px) saturate(180%);
+  -webkit-backdrop-filter: blur(20px) saturate(180%);
+  box-shadow: 0 4px 20px rgba(0,0,0,.22);
+  opacity: 0;
+  transform: translateY(12px) scale(0.96);
+  transition: all 0.26s var(--ease);
+}
+.toast.show { opacity: 1; transform: translateY(0) scale(1); }
+.toast.ok   { background: rgba(52, 199, 89, 0.94); }
+.toast.fail { background: rgba(255, 59, 48, 0.94); }
+
+/* ═══ 日志 / 列表 ═══ */
+.log-box {
+  background: rgba(255, 255, 255, 0.55);
+  border: 1px solid rgba(0,0,0,0.07);
+  border-radius: var(--r-sm);
+  padding: 12px 14px;
+  font-family: var(--font-mono);
+  font-size: 11.5px;
+  line-height: 1.75;
+  color: var(--label-2);
+  overflow: auto;
+  white-space: pre-wrap;
+  word-break: break-all;
+  user-select: text;
+}
+
+.list-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 0;
+  border-bottom: 1px solid var(--separator);
+}
+.list-row:last-child { border-bottom: none; }
+.list-row .k { flex: 1; font-size: 13px; font-weight: 500; }
+.list-row .k small { display: block; font-weight: 400; font-size: 11px; color: var(--label-3); margin-top: 2px; }
+.list-row .v { font-size: 12.5px; color: var(--label-2); font-family: var(--font-mono); font-weight: 500; }
+
+.empty { text-align: center; padding: 36px 16px; color: var(--label-3); font-size: 12.5px; }
+
+.grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+@media (max-width: 860px) { .grid-2 { grid-template-columns: 1fr; } }
+
+.page { display: none; }
+.page.active { display: block; animation: pageIn 0.22s var(--ease); }
+@keyframes pageIn {
+  from { opacity: 0; transform: translateY(6px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+::-webkit-scrollbar { width: 9px; height: 9px; }
+::-webkit-scrollbar-thumb {
+  background: rgba(0,0,0,0.16);
+  border-radius: 99px;
+  border: 2px solid transparent;
+  background-clip: content-box;
+}
+::-webkit-scrollbar-thumb:hover { background: rgba(0,0,0,0.28); background-clip: content-box; }
+::-webkit-scrollbar-track { background: transparent; }
+/* ═══════════════════════════════════════════════════════════════════
+   液态玻璃（Liquid Glass）—— SVG 位移折射
+   ═══════════════════════════════════════════════════════════════════ */
+.liquid-glass { position: relative; overflow: hidden; isolation: isolate; }
+.glass-box {
+  position: absolute; top: 0; left: 0;
+  pointer-events: none; z-index: 1;
+  border-radius: inherit;
+  /* 玻璃厚度：内高光 + 内暗边 + 外发光 */
+  box-shadow:
+    inset 0 0 4px 0 rgba(250,250,250,0.55),
+    inset 0 1px 0 rgba(255,255,255,0.95),
+    inset 0 -1px 0 rgba(0,0,0,0.04),
+    0 0 1px rgba(255,255,255,0.8);
+}
+.lg-content { position: relative; z-index: 3; }
+.lg-overlay-bg { position: absolute; inset: 0; z-index: 2; border-radius: inherit; pointer-events: none; }
+</style>
+</head>
+<body>
+
+<div class="window">
+
+  <!-- ═══════════ 标题栏（50px 拖拽区） ═══════════ -->
+  <div class="titlebar">
+    <div class="lights">
+      <div class="light red"    onclick="winAction('close')"    title="关闭"></div>
+      <div class="light yellow" onclick="winAction('minimize')" title="最小化"></div>
+      <div class="light green"  onclick="winAction('maximize')" title="缩放"></div>
+    </div>
+    <div class="titlebar-title" id="titlebarTitle">QQ Bot</div>
+    <div class="titlebar-spacer"></div>
+    <span id="lastUpdate" style="font-size:11.5px;color:var(--label-3);margin-right:8px;font-variant-numeric:tabular-nums;-webkit-app-region:no-drag"></span>
+    <button class="tb-btn" onclick="refreshAll()" title="立即刷新" style="-webkit-app-region:no-drag">
+      <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12a9 9 0 1 1-2.6-6.4M21 3v6h-6"/></svg>
+    </button>
+    <div style="width:14px"></div>
+  </div>
+
+  <!-- ═══════════ 主体 ═══════════ -->
+  <div class="body">
+
+    <!-- 侧边栏 -->
+    <nav class="topnav liquid-glass" id="topnav">
+      <div class="glass-box" data-blur="3" data-cab="8" data-depth="10" data-strength="110" data-saturate="1.7" data-brightness="1.06"></div>
+      <div class="lg-overlay-bg" style="background:rgba(255,255,255,0.42)"></div>
+      <div class="lg-content" style="display:flex;align-items:center;gap:6px;height:100%;padding:0 12px;">
+      <div class="nav-group-label">监控</div>
+      <button class="nav-item active" data-page="overview" onclick="go('overview')">
+        <svg viewBox="0 0 24 24"><path d="M3 13h4l3-9 3 18 3-9h5"/></svg>
+        <span>概览</span>
+      </button>
+
+      <div class="nav-group-label">管理</div>
+      <button class="nav-item" data-page="control" onclick="go('control')">
+        <svg viewBox="0 0 24 24"><path d="M12 3v10M6.5 12a6 6 0 1 0 11 0"/></svg>
+        <span>控制</span>
+      </button>
+      <button class="nav-item" data-page="persona" onclick="go('persona')">
+        <svg viewBox="0 0 24 24"><circle cx="12" cy="8" r="4"/><path d="M5 21v-1a6 6 0 0 1 6-6h2a6 6 0 0 1 6 6v1"/></svg>
+        <span>人格</span>
+      </button>
+      <button class="nav-item" data-page="log" onclick="go('log')">
+        <svg viewBox="0 0 24 24"><path d="M6 3h9l4 4v14H6zM10 9h5M10 13h5M10 17h3"/></svg>
+        <span>日志</span>
+      </button>
+
+      <div class="nav-group-label">诊断</div>
+      <button class="nav-item" data-page="check" onclick="go('check')">
+        <svg viewBox="0 0 24 24"><path d="M20 6L9 17l-5-5"/></svg>
+        <span>自检</span>
+      </button>
+      <button class="nav-item" data-page="ai" onclick="go('ai')">
+        <svg viewBox="0 0 24 24"><path d="M12 2l2.2 6.6L21 11l-6.8 2.4L12 20l-2.2-6.6L3 11l6.8-2.4z"/></svg>
+        <span>AI 测试</span>
+      </button>
+      <button class="nav-item" data-page="auto" onclick="go('auto')">
+        <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg>
+        <span>自动化</span>
+      </button>
+      <button class="nav-item" data-page="setting" onclick="go('setting')">
+        <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.9l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.9-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.9.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.9 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.9l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.9.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.9-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.9V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z"/></svg>
+        <span>设置</span>
+      </button>
+
+        <div class="nav-right">
+          <span class="dot" id="dotBot" title="机器人"></span>
+          <span class="dot" id="dotGw" title="网关" style="margin-right:10px"></span>
+          <button class="tb-btn" onclick="refreshAll()" title="立即刷新">
+            <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12a9 9 0 1 1-2.6-6.4M21 3v6h-6"/></svg>
+          </button>
+        </div>
+      </div>
+    </nav>
+
+    <!-- 主内容 -->
+    <main class="main liquid-glass" id="main">
+      <div class="glass-box" data-blur="3" data-cab="6" data-depth="10" data-strength="100" data-saturate="1.6" data-brightness="1.01"></div>
+      <div class="lg-overlay-bg" style="background:rgba(255,255,255,0.34)"></div>
+      <div class="lg-content" style="padding:22px 24px;height:100%;overflow-y:auto;">
+
+      <!-- 概览 -->
+      <section class="page active" id="page-overview">
+        <div class="page-head">
+          <div class="page-title">概览</div>
+          <div class="page-sub" id="ovSub">正在读取状态…</div>
+        </div>
+
+        <div class="metrics">
+          <div class="liquid-glass card-wrap"><div class="glass-box" data-blur="3" data-cab="9" data-depth="12" data-strength="130" data-saturate="1.8" data-brightness="1.04"></div><div class="lg-overlay-bg" style="background:rgba(255,255,255,0.34)"></div><div class="lg-content" style="padding:16px 18px">
+            <div class="card-label">进程 PID</div>
+            <div class="card-value" id="mPid">—</div>
+            <div class="card-foot">机器人进程</div>
+          </div>
+          <div class="liquid-glass card-wrap"><div class="glass-box" data-blur="3" data-cab="9" data-depth="12" data-strength="130" data-saturate="1.8" data-brightness="1.04"></div><div class="lg-overlay-bg" style="background:rgba(255,255,255,0.34)"></div><div class="lg-content" style="padding:16px 18px">
+            <div class="card-label">运行时长</div>
+            <div class="card-value sm" id="mUptime">—</div>
+            <div class="card-foot">自启动以来</div>
+          </div>
+          <div class="liquid-glass card-wrap"><div class="glass-box" data-blur="3" data-cab="9" data-depth="12" data-strength="130" data-saturate="1.8" data-brightness="1.04"></div><div class="lg-overlay-bg" style="background:rgba(255,255,255,0.34)"></div><div class="lg-content" style="padding:16px 18px">
+            <div class="card-label">CPU 占用</div>
+            <div class="card-value" id="mCpu">—</div>
+            <div class="bar"><i id="barCpu" style="width:0%"></i></div>
+          </div>
+          <div class="liquid-glass card-wrap"><div class="glass-box" data-blur="3" data-cab="9" data-depth="12" data-strength="130" data-saturate="1.8" data-brightness="1.04"></div><div class="lg-overlay-bg" style="background:rgba(255,255,255,0.34)"></div><div class="lg-content" style="padding:16px 18px">
+            <div class="card-label">内存占用</div>
+            <div class="card-value" id="mMem">—</div>
+            <div class="card-foot" id="mMemFoot">等待数据</div>
+            <div class="bar"><i id="barMem" style="width:0%"></i></div>
+          </div>
+          <div class="liquid-glass card-wrap"><div class="glass-box" data-blur="3" data-cab="9" data-depth="12" data-strength="130" data-saturate="1.8" data-brightness="1.04"></div><div class="lg-overlay-bg" style="background:rgba(255,255,255,0.34)"></div><div class="lg-content" style="padding:16px 18px">
+            <div class="card-label">消息量</div>
+            <div class="card-value" id="mMsg">—</div>
+            <div class="card-foot">今日收发</div>
+          </div>
+          <div class="liquid-glass card-wrap"><div class="glass-box" data-blur="3" data-cab="9" data-depth="12" data-strength="130" data-saturate="1.8" data-brightness="1.04"></div><div class="lg-overlay-bg" style="background:rgba(255,255,255,0.34)"></div><div class="lg-content" style="padding:16px 18px">
+            <div class="card-label">出站连接</div>
+            <div class="card-value" id="mConn">—</div>
+            <div class="card-foot">到腾讯 443</div>
+          </div>
+        </div>
+
+        <div class="liquid-glass card-wrap" style="margin-bottom:12px"><div class="glass-box" data-blur="3" data-cab="9" data-depth="12" data-strength="130" data-saturate="1.8" data-brightness="1.04"></div><div class="lg-overlay-bg" style="background:rgba(255,255,255,0.34)"></div><div class="lg-content" style="padding:16px 18px">
+          <div class="card-label">快捷操作</div>
+          <div class="btn-row" style="margin-top:12px">
+            <button class="btn btn-primary" id="btnStart" onclick="doStart()">启动机器人</button>
+            <button class="btn btn-secondary" onclick="doRestart()">重启</button>
+            <button class="btn btn-danger" onclick="doStop()">停止</button>
+            <button class="btn btn-secondary" onclick="refreshAll()">刷新</button>
+          </div>
+        </div>
+
+        <div class="liquid-glass card-wrap"><div class="glass-box" data-blur="3" data-cab="9" data-depth="12" data-strength="130" data-saturate="1.8" data-brightness="1.04"></div><div class="lg-overlay-bg" style="background:rgba(255,255,255,0.34)"></div><div class="lg-content" style="padding:16px 18px">
+          <div class="card-label">运行详情</div>
+          <div class="list-row"><span class="k">当前人格</span><span class="v" id="dPersona">—</span></div>
+          <div class="list-row"><span class="k">QQ API 解析</span><span class="v" id="dDns">—</span></div>
+          <div class="list-row"><span class="k">网关状态</span><span class="v" id="dGw">—</span></div>
+          <div class="list-row"><span class="k">Clash TUN</span><span class="v" id="dTun">—</span></div>
+          <div class="list-row"><span class="k">最后更新</span><span class="v" id="dTime">—</span></div>
+        </div>
+      </section>
+
+      <!-- 控制 -->
+      <section class="page" id="page-control">
+        <div class="page-head">
+          <div class="page-title">控制</div>
+          <div class="page-sub">所有操作真实执行系统命令</div>
+        </div>
+
+        <div class="liquid-glass card-wrap" style="margin-bottom:12px"><div class="glass-box" data-blur="3" data-cab="9" data-depth="12" data-strength="130" data-saturate="1.8" data-brightness="1.04"></div><div class="lg-overlay-bg" style="background:rgba(255,255,255,0.34)"></div><div class="lg-content" style="padding:16px 18px">
+          <div class="card-label">机器人</div>
+          <div class="btn-row" style="margin-top:12px">
+            <button class="btn btn-primary" onclick="doStart()">启动</button>
+            <button class="btn btn-secondary" onclick="doRestart()">重启</button>
+            <button class="btn btn-danger" onclick="doStop()">停止</button>
+          </div>
+        </div>
+
+        <div class="liquid-glass card-wrap" style="margin-bottom:12px"><div class="glass-box" data-blur="3" data-cab="9" data-depth="12" data-strength="130" data-saturate="1.8" data-brightness="1.04"></div><div class="lg-overlay-bg" style="background:rgba(255,255,255,0.34)"></div><div class="lg-content" style="padding:16px 18px">
+          <div class="card-label">诊断</div>
+          <div class="btn-row" style="margin-top:12px">
+            <button class="btn btn-secondary" onclick="doGateway()">检查网关</button>
+            <button class="btn btn-secondary" onclick="doDns()">DNS 检测</button>
+            <button class="btn btn-secondary" onclick="doTun()">关闭 TUN</button>
+          </div>
+        </div>
+
+        <div class="grid-2">
+          <div class="liquid-glass card-wrap"><div class="glass-box" data-blur="3" data-cab="9" data-depth="12" data-strength="130" data-saturate="1.8" data-brightness="1.04"></div><div class="lg-overlay-bg" style="background:rgba(255,255,255,0.34)"></div><div class="lg-content" style="padding:16px 18px">
+            <div class="card-label">操作记录</div>
+            <div class="log-box" id="opList" style="margin-top:10px;height:260px">还没有操作</div>
+          </div>
+          <div class="liquid-glass card-wrap"><div class="glass-box" data-blur="3" data-cab="9" data-depth="12" data-strength="130" data-saturate="1.8" data-brightness="1.04"></div><div class="lg-overlay-bg" style="background:rgba(255,255,255,0.34)"></div><div class="lg-content" style="padding:16px 18px">
+            <div class="card-label">执行详情</div>
+            <div class="log-box" id="opDetail" style="margin-top:10px;height:260px">点上方按钮执行，这里显示完整命令、结果、验证</div>
+          </div>
+        </div>
+      </section>
+
+      <!-- 人格 -->
+      <section class="page" id="page-persona">
+        <div class="page-head">
+          <div class="page-title">人格</div>
+          <div class="page-sub">切换或编辑机器人的人格设定</div>
+        </div>
+
+        <div class="liquid-glass card-wrap" style="margin-bottom:12px"><div class="glass-box" data-blur="3" data-cab="9" data-depth="12" data-strength="130" data-saturate="1.8" data-brightness="1.04"></div><div class="lg-overlay-bg" style="background:rgba(255,255,255,0.34)"></div><div class="lg-content" style="padding:16px 18px">
+          <div class="card-label">快速切换</div>
+          <div style="margin-top:10px;font-size:12.5px;color:var(--label-3)">当前：<b id="pCur" style="color:var(--label)">—</b></div>
+          <div class="btn-row" style="margin-top:12px">
+            <select id="pSel" style="min-width:240px"></select>
+            <button class="btn btn-primary" onclick="applyPersona()">应用并重启</button>
+          </div>
+        </div>
+
+        <div class="liquid-glass card-wrap"><div class="glass-box" data-blur="3" data-cab="9" data-depth="12" data-strength="130" data-saturate="1.8" data-brightness="1.04"></div><div class="lg-overlay-bg" style="background:rgba(255,255,255,0.34)"></div><div class="lg-content" style="padding:16px 18px">
+          <div class="card-label">直接编辑 AGENTS.md <span id="pInfo" style="font-weight:400;margin-left:6px"></span></div>
+          <textarea id="pText" style="width:100%;height:300px;margin-top:10px;font-family:var(--font-mono);font-size:12px"></textarea>
+          <div class="btn-row" style="margin-top:12px">
+            <button class="btn btn-primary" onclick="savePersona()">保存</button>
+            <button class="btn btn-secondary" onclick="loadPersona()">重新读取</button>
+          </div>
+        </div>
+      </section>
+
+      <!-- 日志 -->
+      <section class="page" id="page-log">
+        <div class="page-head">
+          <div class="page-title">日志</div>
+          <div class="page-sub">查看运行、错误、启动日志</div>
+        </div>
+
+        <div class="liquid-glass card-wrap"><div class="glass-box" data-blur="3" data-cab="9" data-depth="12" data-strength="130" data-saturate="1.8" data-brightness="1.04"></div><div class="lg-overlay-bg" style="background:rgba(255,255,255,0.34)"></div><div class="lg-content" style="padding:16px 18px">
+          <div class="btn-row" style="margin-bottom:12px">
+            <select id="logSel" onchange="loadLog()" style="min-width:200px">
+              <option value="run-out.log">run-out.log（运行）</option>
+              <option value="run-err.log">run-err.log（错误）</option>
+              <option value="autostart.log">autostart.log（启动）</option>
+              <option value="console.log">console.log（控制台）</option>
+            </select>
+            <button class="btn btn-secondary" onclick="loadLog()">刷新</button>
+          </div>
+          <div class="log-box" id="logBox" style="height:calc(100vh - 300px)">加载中…</div>
+        </div>
+      </section>
+
+      <!-- 自检 -->
+      <section class="page" id="page-check">
+        <div class="page-head">
+          <div class="page-title">自检</div>
+          <div class="page-sub">逐项验证后端能力，失败如实显示</div>
+        </div>
+
+        <div class="liquid-glass card-wrap"><div class="glass-box" data-blur="3" data-cab="9" data-depth="12" data-strength="130" data-saturate="1.8" data-brightness="1.04"></div><div class="lg-overlay-bg" style="background:rgba(255,255,255,0.34)"></div><div class="lg-content" style="padding:16px 18px">
+          <div class="btn-row" style="margin-bottom:14px">
+            <button class="btn btn-primary" id="btnCheck" onclick="runCheck()">开始自检</button>
+            <span id="checkSum" style="font-size:12.5px;color:var(--label-3)">尚未运行</span>
+          </div>
+          <div id="checkList"></div>
+        </div>
+      </section>
+
+      <!-- AI 测试 -->
+      <section class="page" id="page-ai">
+        <div class="page-head">
+          <div class="page-title">AI 测试</div>
+          <div class="page-sub">测试模型连通性和回复质量</div>
+        </div>
+
+        <div class="liquid-glass card-wrap" style="margin-bottom:12px"><div class="glass-box" data-blur="3" data-cab="9" data-depth="12" data-strength="130" data-saturate="1.8" data-brightness="1.04"></div><div class="lg-overlay-bg" style="background:rgba(255,255,255,0.34)"></div><div class="lg-content" style="padding:16px 18px">
+          <div class="card-label">模型</div>
+          <div class="btn-row" style="margin-top:10px">
+            <select id="aiModel" style="min-width:220px"></select>
+            <button class="btn btn-secondary" onclick="loadModels()">加载列表</button>
+            <button class="btn btn-secondary" onclick="testAll()">测试全部</button>
+            <span id="aiRes" style="font-size:12px;color:var(--label-3)"></span>
+          </div>
+          <textarea id="aiPrompt" rows="3" style="width:100%;margin-top:12px" placeholder="输入测试内容">你好，用一句话介绍你自己</textarea>
+          <div class="btn-row" style="margin-top:10px">
+            <button class="btn btn-primary" onclick="doAI()">发送测试</button>
+          </div>
+        </div>
+
+        <div class="liquid-glass card-wrap"><div class="glass-box" data-blur="3" data-cab="9" data-depth="12" data-strength="130" data-saturate="1.8" data-brightness="1.04"></div><div class="lg-overlay-bg" style="background:rgba(255,255,255,0.34)"></div><div class="lg-content" style="padding:16px 18px">
+          <div class="card-label">回复</div>
+          <div class="log-box" id="aiReply" style="margin-top:10px;height:220px">—</div>
+        </div>
+      </section>
+
+      <!-- 自动化 -->
+      <section class="page" id="page-auto">
+        <div class="page-head">
+          <div class="page-title">自动化</div>
+          <div class="page-sub">定时巡检与故障自愈</div>
+        </div>
+
+        <div class="liquid-glass card-wrap" style="margin-bottom:12px"><div class="glass-box" data-blur="3" data-cab="9" data-depth="12" data-strength="130" data-saturate="1.8" data-brightness="1.04"></div><div class="lg-overlay-bg" style="background:rgba(255,255,255,0.34)"></div><div class="lg-content" style="padding:16px 18px">
+          <div class="list-row">
+            <span class="k">启用定时巡检<small>发现故障自动处理</small></span>
+            <label class="switch"><input type="checkbox" id="auOn" onchange="saveAuto()"><span></span></label>
+          </div>
+          <div class="list-row">
+            <span class="k">检查间隔</span>
+            <span class="v"><input type="number" id="auInt" value="60" min="10" max="3600" style="width:80px"> 秒</span>
+          </div>
+          <div class="list-row">
+            <span class="k">故障时</span>
+            <span class="v">
+              <select id="auAct">
+                <option value="0">仅记录</option>
+                <option value="1" selected>自动重启</option>
+                <option value="2">关 TUN 后重启</option>
+              </select>
+            </span>
+          </div>
+          <div class="btn-row" style="margin-top:12px">
+            <button class="btn btn-primary" onclick="saveAuto()">保存</button>
+            <span id="auStatus" style="font-size:12px;color:var(--label-3)">未运行</span>
+          </div>
+        </div>
+
+        <div class="liquid-glass card-wrap"><div class="glass-box" data-blur="3" data-cab="9" data-depth="12" data-strength="130" data-saturate="1.8" data-brightness="1.04"></div><div class="lg-overlay-bg" style="background:rgba(255,255,255,0.34)"></div><div class="lg-content" style="padding:16px 18px">
+          <div class="card-label">巡检记录</div>
+          <div class="log-box" id="auLog" style="margin-top:10px;height:200px">还没有记录</div>
+        </div>
+      </section>
+
+      <!-- 设置 -->
+      <section class="page" id="page-setting">
+        <div class="page-head">
+          <div class="page-title">设置</div>
+          <div class="page-sub">改动写入 patch.yml，重启后生效</div>
+        </div>
+
+        <div class="liquid-glass card-wrap"><div class="glass-box" data-blur="3" data-cab="9" data-depth="12" data-strength="130" data-saturate="1.8" data-brightness="1.04"></div><div class="lg-overlay-bg" style="background:rgba(255,255,255,0.34)"></div><div class="lg-content" style="padding:16px 18px">
+          <div class="list-row">
+            <span class="k">模型<small>机器人使用的 AI 模型</small></span>
+            <span class="v"><select id="cfgModel" style="min-width:200px"></select></span>
+          </div>
+          <div class="list-row">
+            <span class="k">群里必须 @ 才回复<small>关闭后群里任何消息都会回</small></span>
+            <label class="switch"><input type="checkbox" id="cfgMention"><span></span></label>
+          </div>
+          <div class="list-row">
+            <span class="k">流式输出<small>开启会边想边发，建议关闭</small></span>
+            <label class="switch"><input type="checkbox" id="cfgStream"><span></span></label>
+          </div>
+          <div class="list-row">
+            <span class="k">显示工具结果<small>是否把工具调用过程发给用户</small></span>
+            <label class="switch"><input type="checkbox" id="cfgTool"><span></span></label>
+          </div>
+          <div class="list-row">
+            <span class="k">调试模式<small>输出详细日志</small></span>
+            <label class="switch"><input type="checkbox" id="cfgDebug"><span></span></label>
+          </div>
+          <div class="list-row">
+            <span class="k">私聊访问</span>
+            <span class="v"><select id="cfgC2c"><option value="open">open</option><option value="closed">closed</option></select></span>
+          </div>
+          <div class="list-row">
+            <span class="k">群聊访问</span>
+            <span class="v"><select id="cfgGroup"><option value="open">open</option><option value="closed">closed</option></select></span>
+          </div>
+          <div class="btn-row" style="margin-top:16px">
+            <button class="btn btn-primary" onclick="saveConfig()">保存配置</button>
+            <button class="btn btn-secondary" onclick="loadConfig()">重新读取</button>
+          </div>
+        </div>
+      </section>
+
+      </div>
+    </main>
+  </div>
+</div>
+
+<div class="toast-wrap" id="toastWrap"></div>
+
+<script src="liquid-glass.js"></script>
+<script>
+/* ══════════════════════════════════════════════════════════════════
+   WebView2 通信封装
+   ══════════════════════════════════════════════════════════════════ */
+
+let _seq = 0;                       // 请求序号
+const _pending = new Map();         // id → { resolve, timer }
+
+/** WebView2 是否就绪 */
+const hasWV = () => !!(window.chrome && window.chrome.webview);
+
+/**
+ * 挂载消息接收器
+ * 注意：WebView2 的 PostWebMessageAsJson 不触发 window 的 message 事件，
+ * 必须监听 chrome.webview 自己的 message 事件，否则永远收不到回复。
+ */
+function attachReceiver() {
+  if (!hasWV()) return false;
+  window.chrome.webview.addEventListener('message', (event) => {
+    const msg = event.data;
+    if (!msg || msg.type !== 'reply') return;
+
+    const waiter = _pending.get(msg.id);
+    if (!waiter) return;
+
+    clearTimeout(waiter.timer);
+    _pending.delete(msg.id);
+    waiter.resolve(msg.payload);
+  });
+  return true;
+}
+
+/**
+ * 调用 C# 后端
+ * @param {string} action  API 路径，如 'api/status'
+ * @param {object} payload 查询参数（可选）
+ * @returns {Promise<object>} C# 返回的 payload
+ */
+function invokeCSharp(action, payload) {
+  return new Promise((resolve) => {
+    if (!hasWV()) {
+      resolve({ ok: false, msg: 'WebView2 未就绪' });
+      return;
+    }
+
+    let path = action;
+    if (payload && Object.keys(payload).length) {
+      const qs = Object.keys(payload)
+        .map((k) => encodeURIComponent(k) + '=' + encodeURIComponent(payload[k]))
+        .join('&');
+      path += (path.includes('?') ? '&' : '?') + qs;
+    }
+
+    const id = ++_seq;
+
+    // 15 秒兜底超时
+    const timer = setTimeout(() => {
+      if (_pending.has(id)) {
+        _pending.delete(id);
+        resolve({ ok: false, msg: '请求超时' });
+      }
+    }, 15000);
+
+    _pending.set(id, { resolve, timer });
+    window.chrome.webview.postMessage({ type: 'req', id: id, path: path });
+  });
+}
+
+// WebView2 可能后注入，轮询等待
+(function waitForWebView(remain) {
+  if (attachReceiver()) return;
+  if (remain > 0) setTimeout(() => waitForWebView(remain - 1), 50);
+})(40);
+
+
+/* ══════════════════════════════════════════════════════════════════
+   窗口控制（红绿灯）
+   ══════════════════════════════════════════════════════════════════ */
+function winAction(action) {
+  invokeCSharp('api/window', { action: action }).then(() => {});
+}
+
+
+/* ══════════════════════════════════════════════════════════════════
+   Toast
+   ══════════════════════════════════════════════════════════════════ */
+function toast(text, kind) {
+  const wrap = document.getElementById('toastWrap');
+  const el = document.createElement('div');
+  el.className = 'toast ' + (kind || '');
+  el.textContent = text;
+  wrap.appendChild(el);
+
+  requestAnimationFrame(() => el.classList.add('show'));
+
+  setTimeout(() => {
+    el.classList.remove('show');
+    setTimeout(() => el.remove(), 300);
+  }, 2600);
+}
+
+
+/* ══════════════════════════════════════════════════════════════════
+   页面切换
+   ══════════════════════════════════════════════════════════════════ */
+let currentPage = 'overview';
+
+function go(page) {
+  currentPage = page;
+
+  document.querySelectorAll('.page').forEach((el) => {
+    el.classList.toggle('active', el.id === 'page-' + page);
+  });
+
+  document.querySelectorAll('.nav-item').forEach((el) => {
+    el.classList.toggle('active', el.dataset.page === page);
+  });
+
+  const loaders = {
+    overview: refreshStatus,
+    control: loadOps,
+    persona: () => { loadPersonas(); loadPersona(); },
+    log: loadLog,
+    ai: loadModels,
+    auto: loadAuto,
+    setting: loadConfig,
+  };
+  if (loaders[page]) loaders[page]();
+}
+
+
+/* ══════════════════════════════════════════════════════════════════
+   状态刷新
+   ══════════════════════════════════════════════════════════════════ */
+async function refreshStatus() {
+  const s = await invokeCSharp('api/status');
+  if (!s || s.ok === false) return;
+
+  const dotBot = document.getElementById('dotBot');
+  const dotGw = document.getElementById('dotGw');
+  dotBot.className = 'dot ' + (s.bot ? 'on' : '');
+  dotGw.className = 'dot ' + (s.gateway === '正常' ? 'on' : (s.gateway === '降级' ? 'warn' : ''));
+  document.getElementById('txtBot').textContent = '机器人 ' + (s.bot ? '运行中' : '已停止');
+  document.getElementById('txtGw').textContent = '网关 ' + (s.gateway || '未知');
+
+  const set = (id, v, color) => {
+    const el = document.getElementById(id);
+    if (!el) return;
+    el.textContent = v;
+    if (color) el.style.color = color;
+  };
+
+  set('mPid', s.pid || '—');
+  set('mUptime', s.uptime || '—');
+  set('mConn', s.conn > 0 ? s.conn : '—', s.conn > 0 ? 'var(--green)' : null);
+
+  const cpu = s.cpu != null ? s.cpu : null;
+  const mem = s.mem != null ? s.mem : null;
+  if (cpu == null) set('mCpu', '—');
+  else if (cpu < 0.1) set('mCpu', '空闲', 'var(--green)');
+  else set('mCpu', cpu.toFixed(1) + '%', cpu > 70 ? 'var(--red)' : (cpu > 40 ? 'var(--orange)' : null));
+
+  if (mem == null) set('mMem', '—');
+  else set('mMem', mem.toFixed(0) + ' MB');
+
+  const memFoot = document.getElementById('mMemFoot');
+  if (memFoot && s.memTotal) {
+    memFoot.textContent = '共 ' + s.memTotal + 'MB · 占 ' + (s.memPct || 0) + '%';
+  }
+
+  const lu = document.getElementById('lastUpdate');
+  if (lu) lu.textContent = s.time || '';
+
+  const barCpu = document.getElementById('barCpu');
+  if (barCpu) {
+    barCpu.style.width = Math.min(100, cpu || 0) + '%';
+    barCpu.className = (cpu > 80 ? 'danger' : (cpu > 50 ? 'warn' : ''));
+  }
+  const barMem = document.getElementById('barMem');
+  if (barMem) {
+    const pct = Math.min(100, ((mem || 0) / 2048) * 100);
+    barMem.style.width = pct + '%';
+    barMem.className = (pct > 80 ? 'danger' : (pct > 50 ? 'warn' : ''));
+  }
+
+  set('mMsg', s.msgCount != null ? s.msgCount : '—');
+
+  set('dPersona', s.personaFull || '—');
+  set('dDns', s.dns || '—', s.dnsHijacked ? 'var(--red)' : 'var(--green)');
+  set('dGw', s.gateway || '—', s.gateway === '正常' ? 'var(--green)' : (s.gateway === '降级' ? 'var(--orange)' : null));
+  set('dTun', s.tun === null ? 'Clash 未运行' : (s.tun ? '开启（会劫持）' : '已关闭'), s.tun ? 'var(--orange)' : 'var(--green)');
+  set('dTime', s.time || '—');
+
+  const sub = document.getElementById('ovSub');
+  if (sub) sub.textContent = s.bot ? '机器人运行中 · 更新于 ' + (s.time || '') : '机器人已停止';
+
+  const btnStart = document.getElementById('btnStart');
+  if (btnStart) {
+    btnStart.disabled = !!s.bot;
+    btnStart.textContent = s.bot ? '运行中' : '启动机器人';
+  }
+}
+
+
+/* ══════════════════════════════════════════════════════════════════
+   操作
+   ══════════════════════════════════════════════════════════════════ */
+async function runAction(action, payload, pendingText) {
+  toast(pendingText || '执行中…');
+
+  const r = await invokeCSharp(action, payload);
+
+  const detail = document.getElementById('opDetail');
+  if (detail && r) {
+    const ok = r.ok === true ? '✓' : (r.ok === false ? '✗' : '?');
+    const stamp = new Date().toLocaleTimeString('zh-CN', { hour12: false });
+    detail.textContent =
+      '[' + stamp + '] ' + action + '\n' +
+      (r.detail || r.msg || '') + '\n' + ok + ' ' + (r.msg || '') + '\n\n' + detail.textContent;
+  }
+
+  toast(r && r.msg ? r.msg : '完成', r && r.ok ? 'ok' : 'fail');
+  requestAnimationFrame(refreshStatus);
+  return r;
+}
+
+const doStart = () => runAction('api/start', null, '正在启动…');
+const doStop = () => runAction('api/stop', null, '正在停止…');
+const doRestart = () => runAction('api/restart', null, '正在重启…');
+const doGateway = () => runAction('api/gateway', null, '检查网关…');
+const doDns = () => runAction('api/dns', null, 'DNS 检测…');
+const doTun = () => runAction('api/tun', null, '关闭 TUN…');
+
+async function refreshAll() {
+  toast('正在采集…');
+  const r = await invokeCSharp('api/refresh');
+  if (r && r.ok) {
+    toast('已刷新 ' + r.ms + 'ms', 'ok');
+    await refreshStatus();
+  } else {
+    toast('刷新失败：' + ((r && r.msg) || ''), 'fail');
+  }
+}
+
+async function loadOps() {
+  const r = await invokeCSharp('api/ops');
+  const box = document.getElementById('opList');
+  if (!box) return;
+
+  if (!r || !r.ops || !r.ops.length) {
+    box.textContent = '还没有操作';
+    return;
+  }
+
+  box.textContent = r.ops
+    .map((o) => {
+      const mark = o.verify === true ? '✓' : (o.verify === false ? '✗' : '?');
+      return mark + ' ' + o.time + '  ' + o.action + '  —  ' + (o.result || '');
+    })
+    .join('\n');
+}
+
+
+/* ══════════════════════════════════════════════════════════════════
+   人格
+   ══════════════════════════════════════════════════════════════════ */
+async function loadPersonas() {
+  const [list, status] = await Promise.all([
+    invokeCSharp('api/personas'),
+    invokeCSharp('api/status'),
+  ]);
+
+  const sel = document.getElementById('pSel');
+  if (sel && list.list) {
+    sel.innerHTML = list.list.map((n) => '<option>' + n + '</option>').join('');
+  }
+
+  const cur = document.getElementById('pCur');
+  if (cur && status) cur.textContent = status.personaFull || '—';
+}
+
+async function applyPersona() {
+  const sel = document.getElementById('pSel');
+  if (!sel) return;
+  const name = sel.value;
+  if (!name) { toast('先选一个人格', 'fail'); return; }
+
+  const r = await runAction('api/persona', { name }, '切换人格…');
+  if (r && r.ok) setTimeout(() => doRestart(), 600);
+}
+
+async function loadPersona() {
+  const r = await invokeCSharp('api/persona-text');
+  const ta = document.getElementById('pText');
+  const info = document.getElementById('pInfo');
+  if (r && r.ok) {
+    if (ta) ta.value = r.text || '';
+    if (info) info.textContent = r.size + ' 字符';
+  }
+}
+
+async function savePersona() {
+  const ta = document.getElementById('pText');
+  if (!ta) return;
+  if (ta.value.length < 50) { toast('内容太短（至少 50 字符）', 'fail'); return; }
+
+  const r = await runAction('api/persona-save', { text: ta.value }, '保存人格…');
+  if (r && r.ok) loadPersona();
+}
+
+
+/* ══════════════════════════════════════════════════════════════════
+   日志
+   ══════════════════════════════════════════════════════════════════ */
+async function loadLog() {
+  const sel = document.getElementById('logSel');
+  const box = document.getElementById('logBox');
+  if (!sel || !box) return;
+
+  box.textContent = '加载中…';
+  const r = await invokeCSharp('api/log', { file: sel.value });
+  box.textContent = (r && r.text) || '(空)';
+  box.scrollTop = 0;
+}
+
+
+/* ══════════════════════════════════════════════════════════════════
+   自检
+   ══════════════════════════════════════════════════════════════════ */
+async function runCheck() {
+  const btn = document.getElementById('btnCheck');
+  const sum = document.getElementById('checkSum');
+  btn.disabled = true;
+  btn.innerHTML = '<span class="spin"></span> 自检中';
+  sum.textContent = '正在逐项验证…';
+
+  const r = await invokeCSharp('api/status');
+  btn.disabled = false;
+  btn.textContent = '重新自检';
+
+  const list = document.getElementById('checkList');
+  if (!r || !r.checks) {
+    sum.textContent = '自检失败';
+    return;
+  }
+
+  let pass = 0, fail = 0, unk = 0;
+  list.innerHTML = r.checks
+    .map((i) => {
+      let cls = '', txt = '';
+      if (i.pass === true) { cls = 'on'; txt = '通过'; pass++; }
+      else if (i.pass === false) { cls = 'err'; txt = '失败'; fail++; }
+      else { cls = 'warn'; txt = '未知'; unk++; }
+
+      return (
+        '<div class="list-row">' +
+          '<span class="dot ' + cls + '"></span>' +
+          '<span class="k">' + i.name + '<small>' + (i.detail || '') + '</small></span>' +
+          '<span class="v">' + txt + ' · ' + i.ms + 'ms</span>' +
+        '</div>'
+      );
+    })
+    .join('');
+
+  sum.textContent = '通过 ' + pass + ' · 失败 ' + fail + ' · 未知 ' + unk;
+  sum.style.color = fail > 0 ? 'var(--red)' : (unk > 0 ? 'var(--orange)' : 'var(--green)');
+  toast(sum.textContent, fail > 0 ? 'fail' : 'ok');
+}
+
+
+/* ══════════════════════════════════════════════════════════════════
+   AI 测试
+   ══════════════════════════════════════════════════════════════════ */
+async function loadModels() {
+  const r = await invokeCSharp('api/models');
+  const sel = document.getElementById('aiModel');
+  if (sel && r.list) {
+    sel.innerHTML = r.list
+      .map((m) => '<option' + (m === 'deepseek-v4.1-flash' ? ' selected' : '') + '>' + m + '</option>')
+      .join('');
+  }
+}
+
+async function doAI() {
+  const model = document.getElementById('aiModel').value;
+  const prompt = document.getElementById('aiPrompt').value;
+  const box = document.getElementById('aiReply');
+  const res = document.getElementById('aiRes');
+  if (!model) { toast('先加载模型列表', 'fail'); return; }
+
+  box.textContent = '调用中…';
+  res.textContent = '';
+
+  const r = await invokeCSharp('api/ai', { model, prompt });
+
+  if (r && r.ok) {
+    box.textContent = r.reply;
+    res.textContent = '✓ ' + r.ms + 'ms';
+    res.style.color = 'var(--green)';
+  } else {
+    box.textContent = '失败：\n' + ((r && r.msg) || '');
+    res.textContent = '✗ 失败';
+    res.style.color = 'var(--red)';
+  }
+}
+
+async function testAll() {
+  const box = document.getElementById('aiReply');
+  box.textContent = '测试全部模型中…';
+  const r = await invokeCSharp('api/ai-all');
+  box.textContent = (r && r.text) || '失败';
+  toast(r && r.msg ? r.msg : '完成', r && r.ok ? 'ok' : 'fail');
+}
+
+
+/* ══════════════════════════════════════════════════════════════════
+   自动化
+   ══════════════════════════════════════════════════════════════════ */
+async function loadAuto() {
+  const r = await invokeCSharp('api/auto');
+  if (!r) return;
+
+  const on = document.getElementById('auOn');
+  if (on) on.checked = !!r.enabled;
+  const iv = document.getElementById('auInt');
+  if (iv) iv.value = r.interval || 60;
+  const ac = document.getElementById('auAct');
+  if (ac) ac.value = String(r.action || 1);
+
+  const log = document.getElementById('auLog');
+  if (log) log.textContent = (r.log && r.log.length) ? r.log.join('\n') : '还没有记录';
+
+  const st = document.getElementById('auStatus');
+  if (st) st.textContent = r.status || '未运行';
+}
+
+async function saveAuto() {
+  const on = document.getElementById('auOn').checked;
+  const iv = document.getElementById('auInt').value;
+  const ac = document.getElementById('auAct').value;
+  const r = await invokeCSharp('api/auto', { enabled: on ? 1 : 0, interval: iv, action: ac });
+  toast(r && r.msg ? r.msg : '已保存', r && r.ok ? 'ok' : 'fail');
+  loadAuto();
+}
+
+
+/* ══════════════════════════════════════════════════════════════════
+   设置
+   ══════════════════════════════════════════════════════════════════ */
+async function loadConfig() {
+  const r = await invokeCSharp('api/config');
+  if (!r || r.ok === false) { toast('读取配置失败', 'fail'); return; }
+
+  const chk = (id, v) => {
+    const el = document.getElementById(id);
+    if (el) el.checked = (v === 'true' || v === true);
+  };
+  chk('cfgMention', r.requireMention);
+  chk('cfgStream', r.streaming);
+  chk('cfgTool', r.showToolResults);
+  chk('cfgDebug', r.debug);
+
+  const c2c = document.getElementById('cfgC2c');
+  if (c2c) c2c.value = r.c2cMode || 'open';
+  const grp = document.getElementById('cfgGroup');
+  if (grp) grp.value = r.groupMode || 'open';
+
+  const models = await invokeCSharp('api/models');
+  const sel = document.getElementById('cfgModel');
+  if (sel && models.list) {
+    sel.innerHTML = models.list
+      .map((m) => '<option' + (m === r.model ? ' selected' : '') + '>' + m + '</option>')
+      .join('');
+  }
+}
+
+async function saveConfig() {
+  const items = [
+    ['model', document.getElementById('cfgModel').value],
+    ['requireMention', document.getElementById('cfgMention').checked ? 'true' : 'false'],
+    ['streaming', document.getElementById('cfgStream').checked ? 'true' : 'false'],
+    ['showToolResults', document.getElementById('cfgTool').checked ? 'true' : 'false'],
+    ['debug', document.getElementById('cfgDebug').checked ? 'true' : 'false'],
+    ['c2cMode', document.getElementById('cfgC2c').value],
+    ['groupMode', document.getElementById('cfgGroup').value],
+  ];
+
+  let okN = 0, failN = 0;
+  for (const [k, v] of items) {
+    const r = await invokeCSharp('api/config-set', { key: k, value: v });
+    if (r && r.ok) okN++; else failN++;
+  }
+  toast('保存完成：成功 ' + okN + ' 项，失败 ' + failN + ' 项', failN > 0 ? 'fail' : 'ok');
+  if (okN > 0) loadConfig();
+}
+
+
+/* ══════════════════════════════════════════════════════════════════
+   启动
+   ══════════════════════════════════════════════════════════════════ */
+refreshStatus();
+setInterval(() => {
+  if (currentPage === 'overview') refreshStatus();
+}, 2000);
+</script>
+
+<script>
+// 字体诊断：检查 SF Pro 是否真的加载
+window.addEventListener('DOMContentLoaded', () => {
+  setTimeout(() => {
+    if (!document.fonts) return;
+    const check = () => {
+      const loaded = [];
+      document.fonts.forEach(f => { if (f.status === 'loaded') loaded.push(f.family + ' ' + f.weight); });
+      const el = document.createElement('span');
+      el.style.cssText = 'font-family:"SF Pro Display";font-size:20px;position:absolute;visibility:hidden';
+      el.textContent = 'Test';
+      document.body.appendChild(el);
+      const used = getComputedStyle(el).fontFamily;
+      document.body.removeChild(el);
+      const msg = 'FONTS loaded=[' + loaded.join('|') + '] computed=' + used +
+                  ' checker=' + document.fonts.check('16px "SF Pro Display"');
+      if (window.chrome && window.chrome.webview) {
+        window.chrome.webview.postMessage({type:'diag', text: msg});
+      }
+    };
+    document.fonts.ready.then(check);
+  }, 1500);
+});
+</script>
+</body>
+</html>

@@ -1,7 +1,31 @@
-node_modules/
+# 日志
+logs/
 *.log
-.env
-*.bak-*
+
+# 运行时数据
+logs/status.json
+logs/chat-data.json
+logs/api-store.json
+
+# 依赖
+lib/*.dll
+!lib/Microsoft.Web.WebView2.Core.dll
+!lib/Microsoft.Web.WebView2.WinForms.dll
+!WebView2Loader.dll
+
+# 参考 / 第三方
+refs/
+fonts/
+llonebot/
+napcat/
+bridge/
+
+# 临时
+*.tmp
+*.bak
+.backup/
+
+# 密钥
 credentials*
-*.db
-sessions/
+.env
+*.key

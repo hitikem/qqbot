@@ -1,351 +1,350 @@
-# QQ Bot — DeepSeek Harness 驱动的 QQ 机器人
+# QQ Bot 控制台 · Whale Console
 
-一套把 **DeepSeek Harness** 接到 **QQ 官方机器人**的完整方案，附带一份关于「用自己 QQ 号做机器人」的失败复盘。
+> 一个给 [DeepSeek Harness](https://deepseek.com) QQ 机器人用的 Windows 桌面控制台。
+> 液态玻璃界面 · 一键启停 · 聊天记录 · Token 用量 · API 管理
 
-> 本项目记录 2026-10-22 一整天的工作过程：从零搭建、人格调试、两条技术路线的对比与取舍。
+<p align="center">
+  <img src="docs/screenshots/icon.png" width="128" alt="Whale Console">
+</p>
 
-## 目录
-
-- [快速开始（换电脑重装看这里）](#快速开始换电脑重装看这里)
-- [项目结构](#项目结构)
-- [方案一：官方 QQ 机器人（推荐，可用）](#方案一官方-qq-机器人推荐可用)
-- [方案二：OneBot 协议路线（已废弃，附完整复盘）](#方案二onebot-协议路线已废弃附完整复盘)
-- [人格系统](#人格系统)
-- [踩过的坑](#踩过的坑)
-- [后续工作](#后续工作)
+<p align="center">
+  <a href="https://github.com/hitikem/qqbot/stargazers"><img src="https://img.shields.io/github/stars/hitikem/qqbot?style=flat-square" alt="stars"></a>
+  <a href="https://github.com/hitikem/qqbot/releases"><img src="https://img.shields.io/github/v/release/hitikem/qqbot?style=flat-square" alt="release"></a>
+  <img src="https://img.shields.io/badge/platform-Windows%2010%2F11-blue?style=flat-square" alt="platform">
+  <img src="https://img.shields.io/badge/.NET-4.8-512BD4?style=flat-square" alt="dotnet">
+  <img src="https://img.shields.io/badge/license-MIT-green?style=flat-square" alt="license">
+</p>
 
 ---
 
-## 快速开始（换电脑重装看这里）
+## 这是什么
 
-**完整部署步骤见 👉 [DEPLOY.md](./DEPLOY.md)**
+**Whale Console** 是一个 Windows 桌面程序，用来管理跑在 [DeepSeek Harness](https://deepseek.com) 上的 QQ 机器人。
 
-三步走：
+不用记命令、不用开终端 —— 双击 EXE，点按钮就能启停。
 
-1. 装 [Node.js](https://nodejs.org) 22+ 和 [Git](https://git-scm.com)
-2. `npm install -g @deepseek-ai/dsh`
-3. 把本仓库地址发给 AI 助手，说：
+### 核心功能
 
-   ```
-   按这个仓库的 DEPLOY.md 帮我部署 QQ Bot
-   https://github.com/hitikem/qqbot
-   ```
-
-**你需要提前准备好 4 个密钥**（重装前务必记下来）：
-
-| 密钥 | 从哪找 |
+| 功能 | 说明 |
 |---|---|
-| QQ 机器人 AppID | <https://q.qq.com> → 开发设置 |
-| QQ 机器人 AppSecret | 同上 |
-| Agent2API Key | Agent2API 界面 → 密钥管理 |
-| DeepSeek Key | <https://platform.deepseek.com> |
+| **一键启停** | 启动 / 停止 / 重启机器人，实时看状态 |
+| **实时监控** | 进程 PID、运行时长、CPU、内存、消息量、出站连接 |
+| **聊天记录** | 群里和私聊的所有消息，支持筛选 |
+| **Token 用量** | 输入/输出 token、调用次数、三个扇形统计图 |
+| **API 管理** | 添加自定义 API、改密钥、切换默认、连通性测试 |
+| **人格配置** | 14+ 套中文人格，一键切换 |
+| **故障自检** | 10 项自动检查：DNS 劫持、网关健康、模型连通… |
+| **自动化** | 开机自启、定时巡检、状态采集 |
+
+### 界面
+
+液态玻璃（Liquid Glass）+ Apple 设计语言：
+
+- 无边框圆角窗口（18px），整窗可拖动
+- 悬浮胶囊导航，竖排 11 项
+- 背景柔光晕（蓝/紫/粉，极淡）
+- SF Pro 字体嵌入
+- 页面切换 **0.3-1.2ms**
+
+---
+
+## 快速开始
+
+### 系统要求
+
+| 项 | 要求 |
+|---|---|
+| 系统 | Windows 10 1809+ / Windows 11 |
+| 运行时 | .NET Framework 4.8（Win10 1903+ 自带） |
+| WebView2 | Edge WebView2 Runtime（Win11 自带） |
+| Python | 3.9+（采集聊天记录用，可选） |
+
+### 安装
+
+1. 到 [Releases](https://github.com/hitikem/qqbot/releases) 下载 `WhaleConsole-v1.0.0.zip`
+2. 解压到任意目录，比如 `D:\qqbot`
+3. 双击 `QQBotConsole.exe`
+
+首次运行需要配好 DeepSeek Harness 和 Agent2API 网关（见下方）。
+
+### 配置
+
+编辑 `patch.yml`：
+
+```yaml
+provider: local
+model: deepseek-v4.1-flash
+requireMention: false
+streaming: false
+debug: false
+c2cMode: open
+groupMode: open
+```
+
+API 密钥在控制台的 **API 管理** 页里填，会存到 `logs/api-store.json`（已脱敏显示）。
+
+---
+
+## 使用教程
+
+### 第一次启动
+
+1. 双击 `QQBotConsole.exe`
+2. 看左上角两个圆点：
+   - 🟢 **机器人** — 绿=运行中，灰=已停止
+   - 🟢 **网关** — 绿=正常，黄=降级，红=故障
+3. 点左下角 **启动** 按钮
+
+### 概览页
+
+6 个指标卡实时刷新：
+
+```
+进程 PID    机器人进程号
+运行时长    从启动到现在
+CPU 占用    真实百分比
+内存占用    XXX MB / 总内存
+消息量      今日收发数
+出站连接    到腾讯的连接数
+```
+
+### 聊天页
+
+显示所有 QQ 消息，可按「群聊 / 私聊 / 用户发的 / 机器人回的」筛选。
+
+数据来源：`~/.dsh/qqbot-home/sessions/*.jsonl.zstd`（DSH 会话记录）
+
+### Token 页
+
+3 个扇形（甜甜圈）统计图：
+
+| 图 | 内容 |
+|---|---|
+| Token 构成 | 输入 vs 输出占比 |
+| 每日用量占比 | 每天消耗了多少 |
+| 模型占比 | 各模型分别用了多少 |
+
+### API 页
+
+- **测试** — 发一个请求验证连通性，显示耗时
+- **设为默认** — 切换当前用的 API
+- **删除** — 删掉不要的（默认项不能删）
+
+添加新 API 需要填：
+- 名称（随便起）
+- Base URL（比如 `https://api.deepseek.com`）
+- API Key（`sk-...`）
+- 默认模型（比如 `deepseek-v4.1-flash`）
+
+### 从托盘使用
+
+程序最小化后会留在**系统托盘**（右下角），图标是**鲸鱼娘**。
+
+右键菜单：
+- 打开控制台
+- 启动机器人
+- 停止机器人
+- 退出
+
+双击图标 = 打开窗口。
+
+---
+
+## 故障排查
+
+### 机器人起不来
+
+1. 看 **自检** 页，10 项检查会告诉你是哪个环节的问题
+2. 常见原因：
+   - 网关没启动 → 检查 `agent2api.exe` 是否在跑
+   - API Key 失效 → 到 **API 管理** 页点「测试」
+   - DNS 被劫持 → 自检页会显示，点「修 DNS」自动关闭 Clash TUN
+
+### 界面白屏
+
+按 `Ctrl+Shift+I` 打开 DevTools 看控制台错误。
+
+### 托盘图标不见了
+
+Windows 可能会把图标折叠到「隐藏的图标」里，点任务栏的 `^` 展开看看。
+
+### 数据不更新
+
+状态采集靠计划任务，检查任务计划程序里有没有 `QQBot-CollectStatus`。
+
+手动跑一次：
+
+```powershell
+powershell -File D:\qqbot\collect-status.ps1
+```
+
+---
+
+## 从源码构建
+
+### 环境
+
+```
+- .NET Framework 4.8
+- .NET SDK 8+（只为拿 csc.dll）
+- WebView2 SDK（已包含在 lib/）
+```
+
+### 编译
+
+```powershell
+cd D:\qqbot
+
+$fw  = "C:\Windows\Microsoft.NET\Framework64\v4.0.30319"
+$csc = (Get-ChildItem "C:\Program Files\dotnet\sdk" -Directory |
+        Select-Object -Last 1).FullName + "\Roslyn\bincore\csc.dll"
+
+dotnet $csc `
+  /target:winexe /platform:x64 `
+  /win32icon:assets\app.ico `
+  /out:QQBotConsole.exe `
+  /reference:"$fw\mscorlib.dll" `
+  /reference:"$fw\System.dll" `
+  /reference:"$fw\System.Core.dll" `
+  /reference:"$fw\System.Windows.Forms.dll" `
+  /reference:"$fw\System.Drawing.dll" `
+  /reference:"$fw\System.Management.dll" `
+  /reference:"$fw\System.Net.Http.dll" `
+  /reference:"$fw\System.Web.dll" `
+  /reference:"$fw\System.Web.Extensions.dll" `
+  /reference:"lib\Microsoft.Web.WebView2.Core.dll" `
+  /reference:"lib\Microsoft.Web.WebView2.WinForms.dll" `
+  /langversion:latest /nologo `
+  src\QQBotConsole.cs
+```
+
+### 前端
+
+纯 HTML/CSS/JS，无框架、无构建步骤：
+
+```
+ui/
+  index.html        主界面 + 内联 JS
+  winisland.css     设计系统
+  pages-new.js      聊天 / Token / API 三页
+  liquid-glass.js   液态玻璃引擎
+  fonts/            SF Pro WOFF2 子集
+```
+
+改完直接刷新（`Ctrl+R`），不用编译。
 
 ---
 
 ## 项目结构
 
 ```
-D:\ds\qqbot\
-├── patch.yml                  # dsh profile 覆盖层（人格、模型、QQ 通道配置）
-├── agent\
-│   ├── AGENTS.md              # 人格文件（热加载，改完即生效）
-│   └── AGENTS.md.bak-*        # 各版本人格备份
-├── bridge\                    # OneBot 桥接（协议路线用，现已停用）
-│   ├── bridge.mjs
-│   └── e2e-test.mjs           # 人格+模型自检，不依赖 QQ
-├── autostart.ps1              # 开机自启
-├── start.ps1 / stop.ps1       # 启动 / 停止
-├── status.ps1                 # 状态检查
-└── edit-persona.ps1           # 打开人格编辑器
+qqbot/
+├─ QQBotConsole.exe          ← 主程序
+├─ src/QQBotConsole.cs       ← C# 源码（1400 行）
+├─ ui/                       ← 前端
+│  ├─ index.html
+│  ├─ winisland.css
+│  ├─ pages-new.js
+│  └─ fonts/
+├─ assets/
+│  └─ app.ico                ← 鲸鱼娘图标
+├─ tools/
+│  ├─ collect-chat.py        ← 聊天/Token 采集
+│  └─ make-icon.py
+├─ lib/                      ← WebView2 SDK
+├─ collect-status.ps1        ← 状态采集
+├─ config-io.ps1             ← 配置读写
+├─ autostart.ps1             ← 启动机器人
+└─ patch.yml                 ← 机器人配置
 ```
 
 ---
 
-## 方案一：官方 QQ 机器人（推荐，可用）
+## 技术细节
 
-### 为什么选这个
+### 为什么用 C# + WebView2
 
-| 对比项 | 官方机器人 | 协议路线（NapCat 等） |
-|---|---|---|
-| 封号风险 | 无 | 高 |
-| 稳定性 | 稳定 | 被腾讯风控拦截 |
-| 成本 | 免费 | 部分方案要付费 |
-| 私聊主动发 | ❌ 不行 | 可以 |
-| 群聊主动发 | ✅ 需申请额度 | 可以 |
+- **C#** — 直接调 Windows API（进程管理、注册表、系统托盘）
+- **WebView2** — 用 Web 技术做界面，能实现复杂的玻璃效果和动画
+- **体积小** — 190KB EXE，不打包 Chromium
 
-### 搭建步骤
+### 通信机制
 
-1. **注册 QQ 开放平台机器人**
-   - 访问 <https://q.qq.com>，创建应用，拿到 `AppID` 和 `AppSecret`
-
-2. **安装 dsh 和 QQ 插件**
-
-   ```powershell
-   dsh plugin init --profile qqbot
-   # 然后在 profile 的 package.json 里加入：
-   # "@tencent-connect/dsh-qqbot": "^0.5.2"
-   ```
-
-3. **写 patch.yml**
-
-   见 [`patch.yml.example`](./patch.yml.example)，关键部分：
-
-   ```yaml
-   - id: im-qqbot
-     name: '@tencent-connect/dsh-qqbot'
-     config:
-       appId: '你的AppID'
-       appSecret: '你的AppSecret'
-       provider: local
-       model: deepseek-v4.1-flash
-       cwd: D:\ds\qqbot\agent
-       requireMention: false      # 群聊是否必须 @ 才回
-       streaming: false           # 关掉流式（否则会边想边发）
-       debug: false
-       media:
-         enabled: true            # 图片/视频下载
-       vision:
-         enabled: true            # 视觉理解工具
-         provider: local
-         model: deepseek-v4.1-flash
-       access:
-         c2cMode: open
-         groupMode: open
-   ```
-
-4. **启动**
-
-   ```powershell
-   dsh --profile qqbot --patch D:\ds\qqbot\patch.yml
-   ```
-
-### 模型网关
-
-本项目使用 **Agent2API**（[hitikem/Agent2API](https://github.com/hitikem/Agent2API)）作为模型网关：
-
-```
-QQ 机器人 → Agent2API (127.0.0.1:3065/v1) → WorkBuddy / DeepSeek 等
-```
-
-好处是可以用一个 OpenAI 兼容接口调用多家模型额度。
-
----
-
-## 方案二：OneBot 协议路线（已废弃，附完整复盘）
-
-> **结论：走不通。** 根本原因在腾讯服务端，不是配置问题。
-
-### 尝试过的工具
-
-| 工具 | 结果 |
-|---|---|
-| NapCat v4.18.41 | 能扫码登录，但拿到空票据，会话立即被断开 |
-| LuckyLillia (LLOneBot) v8.3.2 | 需要付费 Auth Token，且解决了签名也未必解决账号风控 |
-
-### 四层问题（前三层已修复，第四层无解）
-
-#### 第 1 层：Clash TUN 劫持 DNS ✅ 已修
-
-**现象**：腾讯域名被解析成 Clash 的 fake-ip
-
-```
-TUN 开：msfwifi.3g.qq.com → 198.18.0.12 / 2001:2::b
-TUN 关：msfwifi.3g.qq.com → 36.155.187.71（真实 IP）
-```
-
-**原因**：Clash 虚拟网卡 `Meta` 以 metric 0 抢占默认路由，DNS 指向 `198.18.0.2`。
-
-**修复**：通过 Clash API 关闭 TUN
-
-```powershell
-# secret 在 clash-verge 的 config.yaml 里
-Invoke-WebRequest -Method Patch -Uri 'http://127.0.0.1:9097/configs' `
-  -Headers @{ Authorization = 'Bearer <secret>'; 'Content-Type' = 'application/json' } `
-  -Body '{"tun":{"enable":false}}'
-```
-
-#### 第 2 层：`n2e()` 永久挂起（NapCat 自身缺陷）✅ 已修
-
-NapCat 的 `napcat.mjs` 里：
+WebView2 的 `file://` 页面**不能** `fetch()` HTTP，所以用 `postMessage`：
 
 ```js
-async function n2e(t, e, n) {
-  return new Promise((r, i) => {
-    const o = new cse();
-    if (o.onOpentelemetryInit = (s) => { s.is_init ? r() : i(...) }, t.init(...), n)
-      n.start();
-    // ...
-  });
-}
+// JS 发请求
+window.chrome.webview.postMessage({ type: 'req', id: 1, path: 'api/status' });
+
+// JS 收回复（注意：必须用 chrome.webview.addEventListener）
+window.chrome.webview.addEventListener('message', e => {
+  console.log(e.data);
+});
+
+// C# 回复
+web.CoreWebView2.PostWebMessageAsJson(reply);
 ```
 
-**`onOpentelemetryInit` 在整个代码库里从未被调用**（`cse` 类里只有空实现），
-所以这个 Promise 永远不会 resolve → OneBot 初始化永不执行 → 端口永不打开。
+### 状态采集为什么用计划任务
 
-**这是 9 次「登录成功但端口不开」的直接原因。**
+C# 子进程受沙箱限制，看不到其他进程。所以状态采集交给**计划任务**在沙箱外跑，结果写 `logs/status.json`，EXE 只读文件。
 
-**修复**：重写 `n2e()`，不等该回调，改为 `n.start()` 后固定等待内核初始化。
+这样也避免了「每次查状态都启动 PowerShell」导致的卡顿。
 
-#### 第 3 层：QQ 内核读取系统代理 ✅ 已修
+### 性能
 
-**现象**：内核初始化卡住
-
-**修复**：启动时设置环境变量
-
-```powershell
-$env:NAPCAT_PROXY_CLOSE = '1'
-```
-
-#### 第 4 层：登录会话被拒 ❌ 无解
-
-修复前三层后，`xse()` 返回的会话对象暴露了真相：
-
-```json
-{
-  "selfUin": "2706580637",
-  "selfUid": "u_kjBnCJPBsXKXRie8tsiUsw",
-  "clientVer": "9.9.31-49738",
-  "a2": "",
-  "d2": "",
-  "d2Key": ""
-}
-```
-
-`a2` / `d2` / `d2Key` 是 QQ 的登录票据，**三个全空 = 服务端没有真正接受该会话**。
-
-日志随即反复输出：
-
-```
-[Core] [Login] 登录服务已断开，将允许重新获取二维码
-```
-
-手机端显示「扫码成功」，但服务端没有建立有效会话。这是腾讯针对第三方协议客户端的拦截。
-
-**这是协议层风控，本地无法绕过。**
-
-### 桥接程序（仍可用）
-
-即使协议路线不通，`bridge/bridge.mjs` 本身是完整可用的：
-
-- OneBot v11 事件接收（WS / HTTP）
-- 调用模型网关
-- 人格热加载
-- 主动定时发送
-
-只要有一个能正常建立会话的 QQ 号码，这套东西立刻可用。
-
----
-
-## 人格系统
-
-### 存放位置
-
-人格文件：`agent/AGENTS.md`（**热加载，改完下条消息生效**）
-
-但注意：`patch.yml` 里的 `persona` 段是**主控**，优先级更高。两处都要改。
-
-### 已制作的版本
-
-| 文件 | 风格 |
+| 操作 | 耗时 |
 |---|---|
-| `AGENTS.md.bak-极度狂野` | 脏话+黄腔+暴躁（高浓度） |
-| `AGENTS.md.bak-狂野v1` | 狂野毒舌（中等） |
-| `AGENTS.md.bak-鲸鲸` | DeepSeek 蓝鲸娘 |
-| `AGENTS.md.bak-娇宠型` | 黏人护短伴侣 |
-| `AGENTS.md.bak-学习搭子` | 博学多问，辅导作业 |
-| `AGENTS.md.bak-20261022-123648` | 会骂人会吵架 |
-
-切换方法：把备份覆盖回 `AGENTS.md` 即可。
-
-### 写人格的要点
-
-1. **明确"你是谁"**——不是助手，是某个具体角色
-2. **给出说话方式**——句式、口头禅、用词偏好
-3. **举例子**——比抽象描述有效得多
-4. **设定边界**——哪些绝对不做
+| 页面切换 | 0.3-1.2ms |
+| 状态刷新 | 0（读文件） |
+| 首次加载 | ~1.5s |
 
 ---
 
-## 踩过的坑
+## 更新日志
 
-### 1. `streaming` 默认是 true
+### v1.0.0 (2026-10-24)
 
-```js
-streaming: Schema.boolean().default(true)
-```
+首个发布版本。
 
-不配置就会**边想边发**，用户看到的是断断续续的中间过程。设成 `false` 才只发最终结果。
-
-### 2. `debug: true` 会泄露调试信息
-
-排查问题时临时开的，用完记得关。
-
-### 3. 人格文件里的路径会被念出来
-
-如果人格里写「详见工作目录里的 AGENTS.md」，模型会去读文件，读取动作会显示给用户。应写成「不要提及任何文件或路径」。
-
-### 4. Agent2API 的账号会掉登录态
-
-健康检查返回 `status: degraded` 时，说明 WorkBuddy 登录失效，网关自动切换到其他账号。表现为偶尔卡顿或超时。
-
-### 5. 群里消息内容审核比私聊严
-
-同一句话私聊能发，群里会被拦。群聊需要降低内容强度。
-
-### 6. 图片识别不是模型直读
-
-`dsh-qqbot` 插件把图片以**文件路径**形式塞进文字里：
-
-```
-- [Image] xxx.jpg saved at C:\Users\...\media\xxx.jpg
-```
-
-模型需要主动调用 `qqbot_describe_image` 工具才能看到图。人格里必须明确要求它调工具，否则会说「没有图片」。
-
-### 7. 装 dsh 插件用 `--legacy-peer-deps`
-
-dsh 插件生态版本号混乱，直接 `npm install` 会报 peer 冲突。
-
-### 8. 普通插件不能放进 `bundles`
-
-只有声明了 `dsh.bundle` 的包才能进 `dsh.profile.bundles`，其余要走 `cordis.patch.yml` 插件层。
+- 液态玻璃界面（WinIsland 设计系统）
+- 11 个功能页面
+- 一键启停 / 实时监控 / 故障自检
+- 聊天记录 + Token 用量（3 个扇形图）
+- API 管理（自定义 token、添加 API）
+- 系统托盘图标（鲸鱼娘）
+- 无边框圆角窗口，整窗可拖动
+- 页面切换 0.3-1.2ms
 
 ---
 
-## 后续工作
+## 鸣谢
 
-### 待解决
+**图标** — [fornarwhal/deepseek-whale-girl-icon](https://github.com/fornarwhal/deepseek-whale-girl-icon)
 
-- [ ] **联网搜索** — `dsh-web-search-deepseek` 依赖 `@deepseek-ai/dsh-environment`（npm 上不存在），装不了。替代方案是自己写一个 provider 接 SearXNG / DuckDuckGo
-- [ ] **时间感知** — 模型没有实时时钟，问「现在几点」答不上来。可通过注入运行时上下文解决
-- [ ] **群聊内容强度分级** — 平台对群聊审核更严，需要按场景降低露骨程度
-- [ ] **图片识别验证** — 模型能看图（实测准确），但群聊场景下图片能否传到模型尚未验证通过
-- [ ] **主动消息** — 官方机器人私聊不能主动发，群聊需申请额度
+- 角色形象：上善无形（原创 OC「溟月」）
+- DeepSeek 元素二创：ZipZipPipe
+- 改进版修复：QYQCAMIAO
+- 授权：CC BY-NC-SA 4.0（须署名、非商用、相同方式共享）
 
-### 可优化
+**设计** — [WinIsland](https://github.com/WinIslandProject/WinIsland)（液态玻璃设计系统）
 
-- [ ] 把多个桌面快捷方式合并成一个菜单
-- [ ] 人格切换做成一条命令（现在是手动复制文件）
-- [ ] 加一个简单的 Web 面板查看运行状态
+**液态玻璃** — [nikdelvin/liquid-glass](https://github.com/nikdelvin/liquid-glass)
 
-### 已废弃可清理
-
-- `napcat/` — 468MB，协议路线失败
-- `llonebot/` — 278MB，需付费 token
+**浏览器内核** — Microsoft Edge WebView2
 
 ---
-
-## 环境要求
-
-- Windows 10/11
-- Node.js 22+
-- DeepSeek Harness（`npm install -g @deepseek-ai/dsh`）
-- Agent2API 或任意 OpenAI 兼容网关
 
 ## 许可
 
-MIT
+代码部分 MIT。
+
+图标来自上述 CC BY-NC-SA 4.0 项目，**禁止商用**。
 
 ---
 
-**最后更新**：2026-10-23
+## 免责声明
+
+个人项目，按现状提供。使用风险自负。
+
+QQ 机器人相关的账号、密钥、合规问题由使用者自行负责。

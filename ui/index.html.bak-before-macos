@@ -1,0 +1,777 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<title>QQ Bot</title>
+<style>
+:root{
+  --bg:oklch(0.978 0.00265 286.35);
+  --surface:#fff;
+  --surface-2:oklch(0.9767 0.00265 286.35);
+  --inset:oklch(0.93517 0.00535 286.30);
+  --sidebar:oklch(0.92123 0.0046 258.33);
+  --sidebar-fg:oklch(0.43287 0.01676 258.37);
+  --sidebar-muted:oklch(0.512 0.02088 261.29);
+  --nav-hover:oklch(0.145 0 0 / 5%);
+  --nav-sel:oklch(0.89318 0.04237 253.82);
+  --nav-sel-bd:oklch(0.83311 0.05788 254.15);
+  --nav-sel-fg:oklch(0.42649 0.12275 255.6);
+  --text:oklch(0.145 0 0);
+  --text-2:oklch(0.37 0 0);
+  --text-3:oklch(0.49 0 0);
+  --border:oklch(0.145 0 0 / 10%);
+  --border-strong:oklch(0.145 0 0 / 20%);
+  --control:oklch(0.95815 0 0);
+  --control-hover:oklch(0.93214 0.00536 286.30);
+  --primary:oklch(0.603 0.218 257.3);
+  --primary-hover:oklch(0.543 0.218 257.3);
+  --primary-soft:color-mix(in srgb,var(--primary) 10%,white);
+  --primary-fg:oklch(0.48 0.2 257.3);
+  --ok:oklch(0.596 0.145 163.225);
+  --ok-soft:color-mix(in srgb,var(--ok) 10%,white);
+  --warn:oklch(0.681 0.162 75.834);
+  --warn-soft:color-mix(in srgb,var(--warn) 10%,white);
+  --danger:oklch(0.577 0.245 27.325);
+  --danger-soft:color-mix(in srgb,var(--danger) 10%,white);
+  --radius:1rem;
+  --shadow-2:0 1px 3px oklch(0.145 0 0/6%),0 10px 26px -16px oklch(0.145 0 0/20%);
+  --font:"Segoe UI","Microsoft YaHei","Microsoft YaHei UI",system-ui,sans-serif;
+  --mono:Consolas,"Cascadia Mono",monospace;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+html,body{height:100%;overflow:hidden}
+body{font-family:var(--font);background:var(--bg);color:var(--text);font-size:13.5px;-webkit-font-smoothing:antialiased}
+button{font-family:inherit;font-size:inherit;cursor:pointer;border:none;background:none;color:inherit}
+::-webkit-scrollbar{width:10px;height:10px}
+::-webkit-scrollbar-thumb{background:oklch(0.145 0 0/18%);border-radius:5px;border:2px solid transparent;background-clip:content-box}
+::-webkit-scrollbar-thumb:hover{background:oklch(0.145 0 0/30%);background-clip:content-box}
+::-webkit-scrollbar-track{background:transparent}
+
+.shell{display:grid;grid-template-columns:216px 1fr;height:100vh}
+
+/* ============ 侧栏 ============ */
+.sidebar{background:var(--sidebar);display:flex;flex-direction:column;border-right:1px solid var(--border)}
+.brand{height:56px;display:flex;align-items:center;gap:10px;padding:0 18px;flex-shrink:0}
+.brand-icon{width:26px;height:26px;border-radius:8px;background:var(--primary);display:flex;align-items:center;justify-content:center;color:#fff;font-weight:700;font-size:13px}
+.brand-text{font-weight:700;font-size:14px;color:var(--sidebar-fg)}
+.nav{padding:8px;flex:1;overflow-y:auto;display:flex;flex-direction:column;gap:2px}
+.nav-item{display:flex;align-items:center;gap:10px;padding:9px 12px;border-radius:10px;color:var(--sidebar-fg);font-weight:500;transition:background .12s;text-align:left;width:100%}
+.nav-item:hover{background:var(--nav-hover)}
+.nav-item.active{background:var(--nav-sel);color:var(--nav-sel-fg);font-weight:600;box-shadow:inset 0 0 0 1px var(--nav-sel-bd)}
+.nav-item .ico{width:16px;height:16px;flex-shrink:0;opacity:.75}
+.nav-item.active .ico{opacity:1}
+
+.side-foot{padding:12px 16px;border-top:1px solid var(--border);flex-shrink:0;display:flex;flex-direction:column;gap:7px;font-size:11.5px;color:var(--sidebar-muted)}
+.sf-row{display:flex;align-items:center;gap:7px}
+.dot{width:7px;height:7px;border-radius:50%;background:var(--text-3);flex-shrink:0;transition:.2s}
+.dot.on{background:var(--ok);box-shadow:0 0 0 3px color-mix(in srgb,var(--ok) 18%,transparent)}
+.dot.warn{background:var(--warn);box-shadow:0 0 0 3px color-mix(in srgb,var(--warn) 18%,transparent)}
+.dot.off{background:var(--text-3)}
+
+/* ============ 主区 ============ */
+.main{display:flex;flex-direction:column;overflow:hidden}
+.topbar{height:50px;background:var(--surface);border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;padding:0 20px;flex-shrink:0}
+.page-title{font-size:15px;font-weight:650}
+.topbar-right{display:flex;align-items:center;gap:10px;font-size:12px;color:var(--text-3)}
+.content{flex:1;overflow-y:auto;padding:20px}
+.page{display:none;animation:fade .18s}
+.page.active{display:block}
+@keyframes fade{from{opacity:0;transform:translateY(3px)}to{opacity:1;transform:none}}
+
+/* ============ 卡片 ============ */
+.card{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);box-shadow:var(--shadow-2);overflow:hidden}
+.card-h{padding:14px 18px 0;font-size:13px;font-weight:650;display:flex;align-items:center;justify-content:space-between}
+.card-b{padding:14px 18px}
+.card-sub{font-size:12px;color:var(--text-3);font-weight:400}
+
+/* 指标网格 */
+.metrics{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:14px;margin-bottom:14px}
+.metric{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:16px 18px;box-shadow:var(--shadow-2)}
+.metric-k{font-size:11.5px;color:var(--text-3);margin-bottom:8px;display:flex;align-items:center;gap:6px}
+.metric-v{font-size:19px;font-weight:700;letter-spacing:-.3px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.metric-v.sm{font-size:14px}
+.metric-v.ok{color:var(--ok)}
+.metric-v.warn{color:var(--warn)}
+.metric-v.danger{color:var(--danger)}
+
+/* 详情网格 */
+.detail-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:18px 24px}
+.dg-item .k{font-size:11.5px;color:var(--text-3);margin-bottom:5px}
+.dg-item .v{font-size:13.5px;font-weight:600}
+
+/* 按钮 */
+.btn{display:inline-flex;align-items:center;gap:7px;padding:8px 16px;border-radius:9px;font-size:13px;font-weight:500;background:var(--control);border:1px solid var(--control-border,var(--border));color:var(--text);transition:.13s;white-space:nowrap}
+.btn:hover{background:var(--control-hover);border-color:var(--border-strong)}
+.btn:active{transform:scale(.98)}
+.btn:disabled{opacity:.45;cursor:not-allowed;transform:none}
+.btn.primary{background:var(--primary);color:#fff;border-color:transparent;font-weight:600;box-shadow:0 1px 2px oklch(0.145 0 0/6%),0 8px 20px -10px color-mix(in srgb,var(--primary) 55%,transparent)}
+.btn.primary:hover{background:var(--primary-hover)}
+.btn.danger{background:var(--danger-soft);color:var(--danger);border-color:color-mix(in srgb,var(--danger) 28%,white)}
+.btn.warn{background:var(--warn-soft);color:var(--warn);border-color:color-mix(in srgb,var(--warn) 28%,white)}
+.btn.sm{padding:6px 12px;font-size:12px;border-radius:8px}
+.btn-row{display:flex;gap:9px;flex-wrap:wrap}
+
+/* 表单 */
+select,input[type=text],input[type=number],textarea{font-family:inherit;font-size:13px;padding:8px 11px;border-radius:9px;border:1px solid var(--border-strong);background:var(--surface);color:var(--text);outline:none;transition:.13s}
+select:focus,input:focus,textarea:focus{border-color:var(--primary);box-shadow:0 0 0 3px color-mix(in srgb,var(--primary) 18%,transparent)}
+select{cursor:pointer}
+textarea{resize:vertical;line-height:1.6}
+
+/* 日志 */
+.log{background:oklch(0.99 0.002 286);border:1px solid var(--border);border-radius:10px;padding:12px 14px;font-family:var(--mono);font-size:11.5px;line-height:1.75;color:var(--text-2);overflow:auto;white-space:pre-wrap;word-break:break-all}
+.log.big{height:calc(100vh - 260px)}
+.log::-webkit-scrollbar{width:8px}
+
+/* 操作记录 */
+.op-list{max-height:calc(100vh - 300px);overflow-y:auto;font-family:var(--mono);font-size:11.5px;line-height:1.85}
+.op-item{padding:7px 10px;border-radius:7px;margin-bottom:3px;background:var(--surface-2);border-left:2px solid var(--border-strong)}
+.op-item.ok{border-left-color:var(--ok)}
+.op-item.fail{border-left-color:var(--danger)}
+.op-item.unk{border-left-color:var(--warn)}
+.op-t{color:var(--text-3);margin-right:8px}
+.op-a{font-weight:600;color:var(--text)}
+.op-d{color:var(--text-2);margin-top:2px;padding-left:2px}
+
+/* 自检表 */
+table{width:100%;border-collapse:collapse;font-size:12.5px}
+th{text-align:left;padding:9px 12px;color:var(--text-3);font-weight:600;font-size:11.5px;border-bottom:1px solid var(--border);background:var(--surface-2)}
+td{padding:10px 12px;border-bottom:1px solid var(--border)}
+tr:last-child td{border-bottom:none}
+tr:hover td{background:var(--surface-2)}
+.badge{display:inline-flex;align-items:center;gap:5px;padding:2px 9px;border-radius:999px;font-size:11px;font-weight:600}
+.badge.ok{background:var(--ok-soft);color:var(--ok)}
+.badge.fail{background:var(--danger-soft);color:var(--danger)}
+.badge.unk{background:var(--warn-soft);color:var(--warn)}
+.mono{font-family:var(--mono);font-size:11.5px}
+
+/* 设置页 */
+.cfg-row{display:flex;align-items:center;gap:16px;padding:14px 0;border-bottom:1px solid var(--border)}
+.cfg-row:last-child{border-bottom:none}
+.cfg-label{flex:1;min-width:200px}
+.cfg-k{font-size:13px;font-weight:600;margin-bottom:3px}
+.cfg-d{font-size:11.5px;color:var(--text-3)}
+.cfg-ctl{flex-shrink:0}
+.cfg-cur{width:150px;text-align:right;font-size:11.5px;color:var(--text-3);font-family:var(--mono);flex-shrink:0}
+/* 开关 */
+.sw{position:relative;display:inline-block;width:44px;height:24px;cursor:pointer}
+.sw input{opacity:0;width:0;height:0}
+.sw span{position:absolute;inset:0;background:var(--control);border:1px solid var(--border-strong);border-radius:999px;transition:.2s}
+.sw span:before{content:'';position:absolute;width:18px;height:18px;left:2px;top:2px;background:#fff;border-radius:50%;transition:.2s;box-shadow:0 1px 3px rgba(0,0,0,.2)}
+.sw input:checked + span{background:var(--primary);border-color:var(--primary)}
+.sw input:checked + span:before{transform:translateX(20px)}
+/* toast */
+.toast{position:fixed;bottom:24px;left:50%;transform:translate(-50%,80px);background:oklch(0.2 0 0);color:#fff;padding:11px 20px;border-radius:11px;font-size:13px;font-weight:500;opacity:0;transition:.28s cubic-bezier(.34,1.4,.64,1);z-index:999;max-width:80vw}
+.toast.show{opacity:1;transform:translate(-50%,0)}
+.toast.ok{background:var(--ok)}
+.toast.fail{background:var(--danger)}
+.toast.unk{background:var(--warn)}
+
+.empty{text-align:center;padding:40px 20px;color:var(--text-3);font-size:12.5px}
+.grid2{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+@media(max-width:1000px){.grid2{grid-template-columns:1fr}}
+.spin{width:13px;height:13px;border:2px solid color-mix(in srgb,currentColor 25%,transparent);border-top-color:currentColor;border-radius:50%;animation:sp .7s linear infinite;display:inline-block}
+@keyframes sp{to{transform:rotate(360deg)}}
+</style>
+</head>
+<body>
+<div class="shell">
+  <aside class="sidebar">
+    <div class="brand">
+      <div class="brand-icon">Q</div>
+      <div class="brand-text">QQ Bot</div>
+    </div>
+    <nav class="nav" id="nav"></nav>
+    <div class="side-foot">
+      <div class="sf-row"><span class="dot off" id="sdot-bot"></span><span id="stext-bot">机器人 检测中</span></div>
+      <div class="sf-row"><span class="dot off" id="sdot-gw"></span><span id="stext-gw">网关 检测中</span></div>
+    </div>
+  </aside>
+
+  <div class="main">
+    <div class="topbar">
+      <div class="page-title" id="pageTitle">概览</div>
+      <div class="topbar-right"><span id="clock"></span></div>
+    </div>
+    <div class="content" id="content"></div>
+  </div>
+</div>
+<div class="toast" id="toast"></div>
+
+<script>
+const PAGES = [
+  {id:'overview', name:'概览',   ico:'M3 12h4l2-7 3 14 2-9h5'},
+  {id:'control',  name:'控制',   ico:'M12 3v9M5 12a7 7 0 1 0 14 0'},
+  {id:'persona',  name:'人格',   ico:'M12 3a4 4 0 1 0 0 8 4 4 0 0 0 0-8M4 21v-1a6 6 0 0 1 6-6h4a6 6 0 0 1 6 6v1'},
+  {id:'log',      name:'日志',   ico:'M5 3h10l4 4v14H5zM9 9h6M9 13h6M9 17h4'},
+  {id:'check',    name:'自检',   ico:'M20 6L9 17l-5-5'},
+  {id:'ai',       name:'AI 测试',ico:'M12 2l2 6 6 2-6 2-2 6-2-6-6-2 6-2z'},
+  {id:'auto',     name:'自动化', ico:'M12 3a9 9 0 1 0 9 9M12 7v5l3 2'},
+  {id:'setting',  name:'设置',   ico:'M12 15a3 3 0 1 0 0-6 3 3 0 0 0 0 6M19.4 15a1.7 1.7 0 0 0 .3 1.9l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.9-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.9.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.9 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.9l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.9.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.9-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.9V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z'},
+];
+let cur = 'overview';
+let busy = false;
+
+// ---------- 工具 ----------
+function h(s){return s.replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]))}
+function toast(msg, kind='ok'){
+  const t=document.getElementById('toast');
+  t.textContent=msg; t.className='toast '+kind+' show';
+  clearTimeout(window._tt);
+  window._tt=setTimeout(()=>t.className='toast',3200);
+}
+// ---- postMessage 通信（避免 file:// 跨域问题）----
+let _reqId = 0;
+const _pending = new Map();
+// WebView2 的消息必须用 chrome.webview.addEventListener，不是 window
+function attachReceiver(){
+  if(window.chrome && window.chrome.webview){
+    window.chrome.webview.addEventListener('message', (e) => {
+      const d = e.data;
+      if(!d || d.type !== 'reply') return;
+      const cb = _pending.get(d.id);
+      if(cb){ _pending.delete(d.id); cb(d.payload); }
+    });
+    return true;
+  }
+  return false;
+}
+// WebView2 可能在脚本执行后才注入，用轮询确保挂上
+let _attached = false;
+(function waitWebView(n){
+  if(attachReceiver()){ _attached = true; return; }
+  if(n <= 0) return;
+  setTimeout(()=>waitWebView(n-1), 50);
+})(40);
+async function api(path){
+  if(!window.chrome || !window.chrome.webview){
+    console.error('[api] WebView2 未就绪');
+    return {ok:false,msg:'WebView2 未就绪'};
+  }
+  console.log('[api] 请求:', path);
+  return new Promise((resolve)=>{
+    const id = ++_reqId;
+    _pending.set(id, resolve);
+    window.chrome.webview.postMessage({type:'req', id:id, path:path});
+    setTimeout(()=>{ if(_pending.has(id)){ _pending.delete(id); resolve({ok:false,msg:'超时'}); } }, 60000);
+  });
+}
+
+// ---------- 导航 ----------
+function renderNav(){
+  document.getElementById('nav').innerHTML = PAGES.map(p=>`
+    <button class="nav-item ${p.id===cur?'active':''}" onclick="go('${p.id}')">
+      <svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="${p.ico}"/></svg>
+      <span>${p.name}</span>
+    </button>`).join('');
+}
+function go(id){
+  cur=id;
+  renderNav();
+  document.getElementById('pageTitle').textContent = PAGES.find(p=>p.id===id).name;
+  render();
+}
+
+// ---------- 页面 ----------
+function render(){
+  const c = document.getElementById('content');
+  switch(cur){
+    case 'overview': c.innerHTML = pageOverview(); refreshStatus(); break;
+    case 'control':  c.innerHTML = pageControl(); loadOps(); break;
+    case 'persona':  c.innerHTML = pagePersona(); loadPersonas(); break;
+    case 'log':      c.innerHTML = pageLog(); loadLog(); break;
+    case 'check':    c.innerHTML = pageCheck(); break;
+    case 'ai':       c.innerHTML = pageAI(); break;
+    case 'auto':     c.innerHTML = pageAuto(); loadAuto(); break;
+    case 'setting':  c.innerHTML = pageSetting(); loadConfig(); break;
+  }
+}
+
+// ============ 概览 ============
+function pageOverview(){
+  return `
+  <div class="metrics">
+    <div class="metric"><div class="metric-k">进程 PID</div><div class="metric-v sm" id="m-pid">-</div></div>
+    <div class="metric"><div class="metric-k">运行时长</div><div class="metric-v" id="m-uptime">-</div></div>
+    <div class="metric"><div class="metric-k">当前人格</div><div class="metric-v sm" id="m-persona">-</div></div>
+    <div class="metric"><div class="metric-k">QQ API 解析</div><div class="metric-v sm" id="m-dns">-</div></div>
+  </div>
+  <div class="card" style="margin-bottom:14px">
+    <div class="card-h">运行详情 <span class="card-sub" id="m-checked"></span></div>
+    <div class="card-b">
+      <div class="detail-grid">
+        <div class="dg-item"><div class="k">机器人</div><div class="v" id="d-bot">-</div></div>
+        <div class="dg-item"><div class="k">网关</div><div class="v" id="d-gw">-</div></div>
+        <div class="dg-item"><div class="k">出站连接 (443)</div><div class="v" id="d-conn">-</div></div>
+        <div class="dg-item"><div class="k">完整人格名</div><div class="v" id="d-fullpersona" style="font-size:12.5px">-</div></div>
+        <div class="dg-item"><div class="k">Clash TUN</div><div class="v" id="d-tun">-</div></div>
+        <div class="dg-item"><div class="k">控制台</div><div class="v" id="d-console">运行中</div></div>
+      </div>
+    </div>
+  </div>
+  <div class="btn-row">
+    <button class="btn" onclick="act('refresh')">刷新状态</button>
+    <button class="btn primary" onclick="goCheck()">立即自检</button>
+    <button class="btn" onclick="act('restart')">重启机器人</button>
+  </div>`;
+}
+
+// ============ 控制 ============
+function pageControl(){
+  return `
+  <div class="card" style="margin-bottom:14px">
+    <div class="card-h">机器人操作</div>
+    <div class="card-b">
+      <div class="btn-row">
+        <button class="btn primary" onclick="act('start')">▶ 启动</button>
+        <button class="btn" onclick="act('stop')">■ 停止</button>
+        <button class="btn" onclick="act('restart')">⟳ 重启</button>
+        <button class="btn" onclick="act('gateway')">检查网关</button>
+        <button class="btn warn" onclick="act('tun')">关闭 TUN</button>
+        <button class="btn" onclick="act('dns')">DNS 检测</button>
+      </div>
+    </div>
+  </div>
+  <div class="grid2">
+    <div class="card"><div class="card-h">操作记录</div><div class="card-b"><div class="op-list" id="oplist"><div class="empty">还没有操作</div></div></div></div>
+    <div class="card"><div class="card-h">执行详情</div><div class="card-b"><div class="log" id="detail" style="min-height:200px">点上方按钮执行，这里显示完整命令、结果、验证。</div></div></div>
+  </div>`;
+}
+
+// ============ 人格 ============
+function pagePersona(){
+  return `
+  <div class="card">
+    <div class="card-h">人格切换</div>
+    <div class="card-b">
+      <div style="margin-bottom:14px;font-size:12.5px;color:var(--text-3)">当前：<b id="p-cur" style="color:var(--text)">-</b></div>
+      <div style="display:flex;gap:10px;flex-wrap:wrap;align-items:center">
+        <select id="p-sel" style="min-width:280px"></select>
+        <button class="btn primary" onclick="applyPersona()">应用并重启</button>
+        <button class="btn" onclick="act('opendir')">打开人格目录</button>
+      </div>
+    </div>
+  </div>`;
+}
+
+// ============ 日志 ============
+function pageLog(){
+  return `
+  <div style="display:flex;gap:10px;margin-bottom:14px;flex-wrap:wrap;align-items:center">
+    <select id="log-sel" onchange="loadLog()" style="min-width:200px">
+      <option value="run-out.log">run-out.log（运行）</option>
+      <option value="run-err.log">run-err.log（错误）</option>
+      <option value="autostart.log">autostart.log（启动）</option>
+      <option value="console.log">console.log（控制台）</option>
+      <option value="console-crash.log">console-crash.log（崩溃）</option>
+    </select>
+    <button class="btn sm" onclick="loadLog()">刷新</button>
+    <button class="btn sm" onclick="act('opendir')">打开目录</button>
+  </div>
+  <div class="log big" id="logbox">加载中…</div>`;
+}
+
+// ============ 自检 ============
+function pageCheck(){
+  return `
+  <div style="display:flex;gap:12px;margin-bottom:14px;align-items:center;flex-wrap:wrap">
+    <button class="btn primary" id="chkbtn" onclick="runCheck()">开始全面自检</button>
+    <span id="chksum" style="font-size:12.5px;color:var(--text-3)">逐项验证后端能力，失败如实显示</span>
+  </div>
+  <div class="card"><div class="card-b" style="padding:0">
+    <table id="chktable">
+      <thead><tr><th style="width:220px">检查项</th><th style="width:80px">结果</th><th style="width:80px">耗时</th><th>详情</th></tr></thead>
+      <tbody><tr><td colspan="4"><div class="empty">点「开始全面自检」逐项验证</div></td></tr></tbody>
+    </table>
+  </div></div>`;
+}
+
+// ============ AI ============
+function pageAI(){
+  return `
+  <div class="card" style="margin-bottom:14px">
+    <div class="card-h">模型测试</div>
+    <div class="card-b">
+      <div style="display:flex;gap:10px;flex-wrap:wrap;align-items:center;margin-bottom:12px">
+        <select id="ai-model" style="min-width:240px"></select>
+        <button class="btn sm" onclick="loadModels()">加载列表</button>
+        <button class="btn sm" onclick="testAll()">测试全部</button>
+        <span id="ai-res" style="font-size:12px;color:var(--text-3)"></span>
+      </div>
+      <textarea id="ai-prompt" rows="3" style="width:100%;margin-bottom:10px" placeholder="输入测试内容">你好，用一句话介绍你自己</textarea>
+      <button class="btn primary" onclick="doAI()">发送测试</button>
+    </div>
+  </div>
+  <div class="card"><div class="card-h">回复</div><div class="card-b"><div class="log" id="ai-reply" style="min-height:200px">-</div></div></div>`;
+}
+
+// ============ 自动化 ============
+function pageAuto(){
+  return `
+  <div class="card" style="margin-bottom:14px">
+    <div class="card-h">定时巡检</div>
+    <div class="card-b">
+      <div style="display:flex;gap:14px;flex-wrap:wrap;align-items:center">
+        <label style="display:flex;gap:7px;align-items:center;cursor:pointer">
+          <input type="checkbox" id="au-on" onchange="saveAuto()"> 启用
+        </label>
+        <label style="display:flex;gap:7px;align-items:center">间隔
+          <input type="number" id="au-int" value="60" min="10" max="3600" style="width:80px"> 秒
+        </label>
+        <label style="display:flex;gap:7px;align-items:center">故障时
+          <select id="au-act">
+            <option value="0">仅记录</option>
+            <option value="1" selected>自动重启机器人</option>
+            <option value="2">关 TUN 后重启</option>
+          </select>
+        </label>
+        <button class="btn sm" onclick="saveAuto()">保存设置</button>
+      </div>
+      <div style="margin-top:12px;font-size:12px;color:var(--text-3)" id="au-status">未运行</div>
+    </div>
+  </div>
+  <div class="card"><div class="card-h">巡检记录</div><div class="card-b"><div class="log" id="au-log" style="min-height:160px;max-height:340px">还没有记录</div></div></div>`;
+}
+
+// ============ 设置 ============
+function pageSetting(){
+  return `
+  <div class="card" style="margin-bottom:14px">
+    <div class="card-h">机器人配置 <span class="card-sub">改动实时写入 patch.yml，重启后生效</span></div>
+    <div class="card-b">
+      <div class="cfg-row">
+        <div class="cfg-label"><div class="cfg-k">模型</div><div class="cfg-d">机器人使用的 AI 模型</div></div>
+        <div class="cfg-ctl"><select id="cfg-model" style="min-width:260px"></select></div>
+        <div class="cfg-cur" id="cur-model">-</div>
+      </div>
+      <div class="cfg-row">
+        <div class="cfg-label"><div class="cfg-k">群里必须 @ 才回复</div><div class="cfg-d">关闭后群里任何消息都会回</div></div>
+        <div class="cfg-ctl"><label class="sw"><input type="checkbox" id="cfg-mention"><span></span></label></div>
+        <div class="cfg-cur" id="cur-mention">-</div>
+      </div>
+      <div class="cfg-row">
+        <div class="cfg-label"><div class="cfg-k">流式输出</div><div class="cfg-d">开启会边想边发，建议关闭</div></div>
+        <div class="cfg-ctl"><label class="sw"><input type="checkbox" id="cfg-stream"><span></span></label></div>
+        <div class="cfg-cur" id="cur-stream">-</div>
+      </div>
+      <div class="cfg-row">
+        <div class="cfg-label"><div class="cfg-k">显示工具结果</div><div class="cfg-d">是否把工具调用过程发给用户</div></div>
+        <div class="cfg-ctl"><label class="sw"><input type="checkbox" id="cfg-tool"><span></span></label></div>
+        <div class="cfg-cur" id="cur-tool">-</div>
+      </div>
+      <div class="cfg-row">
+        <div class="cfg-label"><div class="cfg-k">调试模式</div><div class="cfg-d">输出详细日志，生产环境建议关闭</div></div>
+        <div class="cfg-ctl"><label class="sw"><input type="checkbox" id="cfg-debug"><span></span></label></div>
+        <div class="cfg-cur" id="cur-debug">-</div>
+      </div>
+      <div class="cfg-row">
+        <div class="cfg-label"><div class="cfg-k">私聊访问</div><div class="cfg-d">open=所有人可用, closed=仅白名单</div></div>
+        <div class="cfg-ctl"><select id="cfg-c2c"><option value="open">open</option><option value="closed">closed</option></select></div>
+        <div class="cfg-cur" id="cur-c2c">-</div>
+      </div>
+      <div class="cfg-row">
+        <div class="cfg-label"><div class="cfg-k">群聊访问</div><div class="cfg-d">open=所有群可用, closed=仅白名单</div></div>
+        <div class="cfg-ctl"><select id="cfg-group"><option value="open">open</option><option value="closed">closed</option></select></div>
+        <div class="cfg-cur" id="cur-group">-</div>
+      </div>
+      <div style="margin-top:16px;padding-top:16px;border-top:1px solid var(--border)">
+        <button class="btn primary" onclick="saveConfig()">保存配置</button>
+        <button class="btn" onclick="loadConfig()">重新读取</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-h">人格文件编辑 <span class="card-sub">直接编辑 AGENTS.md</span></div>
+    <div class="card-b">
+      <div style="margin-bottom:10px;font-size:12px;color:var(--text-3)" id="persona-info">-</div>
+      <textarea id="persona-text" style="width:100%;height:340px;font-family:var(--mono);font-size:12px;line-height:1.7"></textarea>
+      <div style="margin-top:12px">
+        <button class="btn primary" onclick="savePersona()">保存人格</button>
+        <button class="btn" onclick="loadPersona()">重新读取</button>
+      </div>
+    </div>
+  </div>`;
+}
+
+async function loadConfig(){
+  const r = await api('api/config');
+  if(!r || r.ok === false){ toast('读取配置失败','fail'); return; }
+
+  const $ = id => document.getElementById(id);
+  const setCur = (id, v) => { const e=$(id); if(e) e.textContent = '当前: ' + v; };
+  const chk = (id, v) => { const e=$(id); if(e) e.checked = (v === 'true' || v === true); };
+
+  chk('cfg-mention', r.requireMention);
+  chk('cfg-stream', r.streaming);
+  chk('cfg-tool', r.showToolResults);
+  chk('cfg-debug', r.debug);
+
+  setCur('cur-mention', r.requireMention);
+  setCur('cur-stream', r.streaming);
+  setCur('cur-tool', r.showToolResults);
+  setCur('cur-debug', r.debug);
+  setCur('cur-c2c', r.c2cMode);
+  setCur('cur-group', r.groupMode);
+  setCur('cur-model', r.model);
+
+  const c2c = $('cfg-c2c'); if(c2c) c2c.value = r.c2cMode || 'open';
+  const grp = $('cfg-group'); if(grp) grp.value = r.groupMode || 'open';
+
+  // 模型列表
+  const sel = $('cfg-model');
+  if(sel){
+    const m = await api('api/models');
+    if(m && m.list){
+      sel.innerHTML = m.list.map(x=>`<option ${x===r.model?'selected':''}>${h(x)}</option>`).join('');
+    }
+  }
+  toast('配置已加载','ok');
+}
+
+async function saveConfig(){
+  const $ = id => document.getElementById(id);
+  const items = [
+    ['model', $('cfg-model').value],
+    ['requireMention', $('cfg-mention').checked ? 'true' : 'false'],
+    ['streaming', $('cfg-stream').checked ? 'true' : 'false'],
+    ['showToolResults', $('cfg-tool').checked ? 'true' : 'false'],
+    ['debug', $('cfg-debug').checked ? 'true' : 'false'],
+    ['c2cMode', $('cfg-c2c').value],
+    ['groupMode', $('cfg-group').value],
+  ];
+
+  let okN = 0, failN = 0;
+  for(const [k,v] of items){
+    const r = await api('api/config-set?key='+encodeURIComponent(k)+'&value='+encodeURIComponent(v));
+    if(r && r.ok) okN++; else failN++;
+  }
+  toast(`保存完成：成功 ${okN} 项，失败 ${failN} 项`, failN>0?'fail':'ok');
+  if(okN > 0) loadConfig();
+}
+
+async function loadPersona(){
+  const r = await api('api/persona-text');
+  const $ = id => document.getElementById(id);
+  if(!r || r.ok === false){ toast('读取人格失败','fail'); return; }
+  const ta = $('persona-text'); if(ta) ta.value = r.text || '';
+  const info = $('persona-info');
+  if(info) info.textContent = `${r.size} 字符 · ${r.title||''}`;
+}
+
+async function savePersona(){
+  const ta = document.getElementById('persona-text');
+  if(!ta) return;
+  if(ta.value.length < 50){ toast('内容太短（至少 50 字符）','fail'); return; }
+  const r = await api('api/persona-save?text='+encodeURIComponent(ta.value));
+  toast(r.ok ? (r.msg||'已保存') : ('保存失败: '+(r.msg||'')), r.ok?'ok':'fail');
+  if(r.ok) loadPersona();
+}
+// ============ 状态刷新 ============
+let statusTimer=null;
+async function refreshStatus(){
+  const s = await api('api/status');
+  console.log('[refreshStatus] 收到:', JSON.stringify(s).slice(0,200));
+  if(!s || s.ok === false) { console.warn('[refreshStatus] 数据无效', s); return; }
+  const $ = id => document.getElementById(id);
+
+  // 侧栏
+  const botDot = document.getElementById('sdot-bot');
+  const gwDot = document.getElementById('sdot-gw');
+  if(botDot){
+    botDot.className = 'dot '+(s.bot?'on':'off');
+    document.getElementById('stext-bot').textContent = '机器人 '+(s.bot?'运行中':'已停止');
+  }
+  if(gwDot){
+    gwDot.className = 'dot '+(s.gateway==='正常'?'on':(s.gateway==='降级'?'warn':'off'));
+    document.getElementById('stext-gw').textContent = '网关 '+(s.gateway||'未知');
+  }
+
+  // 概览指标卡
+  const setV = (id, val, cls) => {
+    const e = $(id); if(!e) return;
+    e.textContent = val;
+    if(cls !== undefined) e.className = 'metric-v sm ' + cls;
+  };
+  setV('m-pid', s.pid || '-');
+  setV('m-uptime', s.uptime || '-');
+  setV('m-persona', s.persona || '-');
+  setV('m-dns', s.dns || '-', s.dnsHijacked ? 'danger' : 'ok');
+
+  // 详情
+  const setD = (id, val, color) => {
+    const e = $(id); if(!e) return;
+    e.textContent = val;
+    if(color) e.style.color = color;
+  };
+  setD('d-bot', s.bot?'运行中':'已停止', s.bot?'var(--ok)':'var(--text-3)');
+  setD('d-gw', s.gateway||'-', s.gateway==='正常'?'var(--ok)':(s.gateway==='降级'?'var(--warn)':'var(--text-3)'));
+  setD('d-conn', s.conn>0 ? s.conn+' 条' : (s.conn===0?'无连接':'—'), s.conn>0?'var(--ok)':null);
+  setD('d-fullpersona', s.personaFull||'-');
+  setD('d-tun', s.tun===null?'Clash 未运行':(s.tun?'开启（会劫持）':'已关闭'), s.tun?'var(--warn)':'var(--ok)');
+  if($('m-checked')) $('m-checked').textContent = '更新于 '+(s.time||'');
+  if($('p-cur')) $('p-cur').textContent = s.personaFull||'-';
+
+  // 自检结果缓存
+  if(s.checks) window._lastChecks = s.checks;
+}
+setInterval(()=>{ if(cur==='overview') refreshStatus(); }, 3000);
+setInterval(()=>{ const e=document.getElementById('clock'); if(e) e.textContent=new Date().toLocaleTimeString('zh-CN',{hour12:false}); }, 1000);
+
+// ============ 操作 ============
+async function act(cmd){
+  if(busy){ toast('上一个操作还在执行','unk'); return; }
+  busy = true;
+  const all = document.querySelectorAll('.btn');
+  all.forEach(b=>b.disabled=true);
+  toast('执行中…','unk');
+
+  const r = await api('api/'+cmd);
+
+  all.forEach(b=>b.disabled=false);
+  busy = false;
+
+  if(r.ok) toast(r.msg||'完成','ok');
+  else toast(r.msg||'失败','fail');
+
+  // 写详情
+  const d = document.getElementById('detail');
+  if(d && r.detail){
+    d.textContent = r.detail + '\n\n' + d.textContent;
+  }
+  if(cur==='control') loadOps();
+  refreshStatus();
+}
+
+async function loadOps(){
+  const r = await api('api/ops');
+  const box = document.getElementById('oplist');
+  if(!box) return;
+  if(!r.ops || !r.ops.length){ box.innerHTML='<div class="empty">还没有操作</div>'; return; }
+  box.innerHTML = r.ops.map(o=>`
+    <div class="op-item ${o.verify===true?'ok':(o.verify===false?'fail':'unk')}">
+      <span class="op-t">${h(o.time)}</span><span class="op-a">${h(o.action)}</span>
+      <div class="op-d">${h(o.result||'')}</div>
+    </div>`).join('');
+}
+
+async function loadPersonas(){
+  const r = await api('api/personas');
+  const sel = document.getElementById('p-sel');
+  if(!sel) return;
+  sel.innerHTML = (r.list||[]).map(n=>`<option>${h(n)}</option>`).join('');
+  const st = await api('api/status');
+  const cur = document.getElementById('p-cur');
+  if(cur && st) cur.textContent = st.personaFull||'-';
+}
+
+async function applyPersona(){
+  const n = document.getElementById('p-sel').value;
+  if(!n){ toast('先选人格','unk'); return; }
+  toast('切换中…','unk');
+  const r = await api('api/persona?name='+encodeURIComponent(n));
+  toast(r.ok? r.msg : r.msg, r.ok?'ok':'fail');
+  if(r.ok){ setTimeout(()=>act('restart'), 600); }
+}
+
+async function loadLog(){
+  const f = document.getElementById('log-sel').value;
+  const box = document.getElementById('logbox');
+  box.textContent = '加载中…';
+  const r = await api('api/log?file='+encodeURIComponent(f));
+  box.textContent = r.text || '(空)';
+  box.scrollTop = 0;
+}
+
+async function runCheck(){
+  const btn = document.getElementById('chkbtn');
+  btn.disabled = true; btn.innerHTML = '<span class="spin"></span> 自检中…';
+  const sum = document.getElementById('chksum');
+  sum.textContent = '正在逐项验证…';
+
+  await api('api/check');
+  await new Promise(r=>setTimeout(r,2500));
+  const r = await api('api/status');
+  btn.disabled = false; btn.textContent = '重新自检';
+
+  const tb = document.querySelector('#chktable tbody');
+  if(!r.checks){ sum.textContent='自检失败'; return; }
+
+  const items = r.checks;
+  const pass = items.filter(x=>x.pass===true).length;
+  const fail = items.filter(x=>x.pass===false).length;
+  const unk = items.length - pass - fail;
+
+  tb.innerHTML = items.map(i=>{
+    const cls = i.pass===true?'ok':(i.pass===false?'fail':'unk');
+    const txt = i.pass===true?'通过':(i.pass===false?'失败':'未知');
+    return `<tr>
+      <td>${h(i.name)}</td>
+      <td><span class="badge ${cls}">${txt}</span></td>
+      <td class="mono">${i.ms}ms</td>
+      <td style="color:var(--text-2)">${h(i.detail||'')}</td>
+    </tr>`;
+  }).join('');
+
+  sum.textContent = `通过 ${pass} · 失败 ${fail} · 未知 ${unk}`;
+  sum.style.color = fail>0?'var(--danger)':(unk>0?'var(--warn)':'var(--ok)');
+  toast(sum.textContent, fail>0?'fail':'ok');
+}
+
+function goCheck(){ go('check'); setTimeout(()=>runCheck(), 100); }
+
+async function loadModels(){
+  const r = await api('api/models');
+  const sel = document.getElementById('ai-model');
+  if(!sel) return;
+  sel.innerHTML = (r.list||[]).map(m=>`<option ${m==='deepseek-v4.1-flash'?'selected':''}>${h(m)}</option>`).join('');
+  toast('加载 '+(r.list||[]).length+' 个模型','ok');
+}
+
+async function doAI(){
+  const m = document.getElementById('ai-model').value;
+  const p = document.getElementById('ai-prompt').value;
+  const box = document.getElementById('ai-reply');
+  const res = document.getElementById('ai-res');
+  if(!m){ toast('先加载模型列表','unk'); return; }
+  box.textContent = '调用中…'; res.textContent='';
+  const r = await api('api/ai?model='+encodeURIComponent(m)+'&prompt='+encodeURIComponent(p));
+  if(r.ok){ box.textContent = r.reply; res.textContent = '✓ '+r.ms+'ms'; res.style.color='var(--ok)'; }
+  else { box.textContent = '失败：\n'+r.msg; res.textContent='✗ 失败'; res.style.color='var(--danger)'; }
+}
+
+async function testAll(){
+  const box = document.getElementById('ai-reply');
+  box.textContent = '测试全部模型中…';
+  const r = await api('api/ai-all');
+  box.textContent = r.text || '失败';
+  toast(r.msg||'完成', r.ok?'ok':'fail');
+}
+
+async function loadAuto(){
+  const r = await api('api/auto');
+  if(!r) return;
+  const on = document.getElementById('au-on');
+  if(on){ on.checked = !!r.enabled; document.getElementById('au-int').value = r.interval||60; document.getElementById('au-act').value = String(r.action||1); }
+  const log = document.getElementById('au-log');
+  if(log) log.textContent = (r.log&&r.log.length) ? r.log.join('\n') : '还没有记录';
+  const st = document.getElementById('au-status');
+  if(st) st.textContent = r.status || '未运行';
+}
+
+async function saveAuto(){
+  const on = document.getElementById('au-on').checked;
+  const iv = document.getElementById('au-int').value;
+  const ac = document.getElementById('au-act').value;
+  const r = await api('api/auto?enabled='+(on?1:0)+'&interval='+iv+'&action='+ac);
+  toast(r.msg||'已保存', r.ok?'ok':'fail');
+  loadAuto();
+}
+
+// ---------- 启动 ----------
+renderNav();
+render();
+loadModels();
+refreshStatus();
+</script>
+</body>
+</html>
